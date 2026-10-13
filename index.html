@@ -36,7 +36,7 @@ button{width:100%;border:0;border-radius:16px;padding:16px;font-size:17px;font-w
 <p class="small">13匹の基準特徴と録音・選択した鳴き声を比較します。判定方法は試験版で、閾値は未校正です。比較距離は確率や一致率ではなく、小さいほど基準音に近い値です。必ず正解するわけではありません。ゲームセンターでは端末をスピーカーに近づけ、鳴き声の前後の雑音をなるべく減らしてください。</p>
 </div></main>
 <script>
-let ctx,refs=[],stream,processor,source,recorded=[],recording=false;
+let ctx,refs=[],stream,processor,source,silentGain,recorded=[],recording=false,recordingStarted=0;
 const start=document.getElementById('start');
 const stop=document.getElementById('stop');
 const ready=document.getElementById('ready');
@@ -148,11 +148,15 @@ async function begin(){
     recorded=[];
     processor.onaudioprocess=e=>{if(recording)recorded.push(new Float32Array(e.inputBuffer.getChannelData(0)))};
     source.connect(processor);
-    processor.connect(ctx.destination);
+    silentGain=ctx.createGain();
+    silentGain.gain.value=0;
+    processor.connect(silentGain);
+    silentGain.connect(ctx.destination);
     recording=true;
+    recordingStarted=performance.now();
     stop.disabled=false;
     result.classList.add('hidden');
-    status.textContent='🔴 録音中… 鳴き声が終わったら停止';
+    status.textContent='🔴 録音中… 2〜3秒待ってから停止してください';
   }catch(e){
     if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
     start.disabled=false;stop.disabled=true;
@@ -177,11 +181,14 @@ function finish(){
   recording=false;stop.disabled=true;
   try{
     processor.disconnect();source.disconnect();
+    if(silentGain){silentGain.disconnect();silentGain=null}
     stream.getTracks().forEach(t=>t.stop());
     stream=null;processor=null;source=null;
     const len=recorded.reduce((a,x)=>a+x.length,0);
     if(len<ctx.sampleRate*.15){
-      status.textContent='録音が短すぎます';start.disabled=false;return;
+      const elapsed=((performance.now()-recordingStarted)/1000).toFixed(1);
+      status.textContent=`音声データが不足しています（録音操作 ${elapsed}秒・取得 ${(len/ctx.sampleRate).toFixed(2)}秒）。iPhoneではMP3ファイル直接判定もお試しください。`;
+      start.disabled=false;return;
     }
     const all=new Float32Array(len);let p=0;
     for(const x of recorded){all.set(x,p);p+=x.length}
