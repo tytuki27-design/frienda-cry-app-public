@@ -1,1 +1,3 @@
-# frienda-cry-app-public
+# フレンダ13匹 鳴き声判定
+
+公開用には元のWAV音源を含めず、事前計算した数値特徴 (`references.json`) のみを使用します。
