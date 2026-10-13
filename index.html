@@ -14,7 +14,7 @@ label{font-size:14px;font-weight:600}#status{text-align:center;color:#555;margin
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hidden{display:none}
 audio{width:100%;margin-top:8px}.danger{color:#9d3327}
 </style></head><body><main><div class="card">
-<h1>🎙️ フレンダ鳴き声判定</h1><div class="sub">v8.6 基準MP3の一致時刻を診断・13匹のMP3内蔵</div>
+<h1>🎙️ フレンダ鳴き声判定</h1><div class="sub">v8.6 追加録音の照合診断・13匹のMP3内蔵</div>
 <div id="ready" class="small" style="text-align:center">基準MP3を準備中…</div>
 <button class="primary" id="start" disabled>🎤 判定スタート</button><button id="stop" disabled>停止して判定</button>
 <label for="file">または録音ファイルを選択</label><input id="file" type="file" accept="audio/*,.m4a,.mp3,.wav">
@@ -125,7 +125,7 @@ const top=scores[0],gap=scores.length>1?top.score-scores[1].score:null;
 const uncertain=gap!==null&&gap<UNCERTAIN_MARGIN;
 $('results').classList.remove('hidden');$('results').innerHTML=`<div class="winner"><div style="font-size:13px;font-weight:700;color:#2563eb;margin-bottom:8px">${sourceLabel} #${run} / 使用区間 ${inputRange}</div><div>${uncertain?'判定不確か（1位と2位が僅差）':'最も近い鳴き声（暫定）'}</div><strong>${top.name}</strong><div>類似指標 ${top.score.toFixed(3)}</div><div class="small">${gap===null?'2位の照合成立なし':`1位と2位の差 ${gap.toFixed(3)}（僅差の基準：${UNCERTAIN_MARGIN.toFixed(3)}未満）`}</div><div class="small">検出区間 ${(top.from+offset).toFixed(2)}〜${(top.to+offset).toFixed(2)}秒</div><div class="small danger">試験版のため、正解は保証できません</div></div>`+scores.slice(0,5).map((x,i)=>`<div style="border-bottom:1px solid #eee;padding:12px 4px"><div class="item" style="border:0;padding:0"><b>${i+1}位 ${x.name}</b><span>${x.score.toFixed(3)}</span></div><div class="small">内蔵MP3 ${metric(x.base)} / 追加録音 ${userSamples.some(s=>s.name===x.name)?metric(x.extra):'未登録'}<br>採用した照合元：${x.source} / 一致区間 ${x.refFrom.toFixed(2)}〜${x.refTo.toFixed(2)}秒（速度倍率 ${x.scale.toFixed(2)}）</div>${x.base?`<button type="button" data-refname="${x.name}" data-from="${x.base.refFrom}" data-to="${x.base.refTo}" style="font-size:13px;padding:9px">▶ この基準MP3の一致部分を再生</button>`:''}</div>`).join('');
 $('results').querySelectorAll('button[data-refname]').forEach(btn=>btn.onclick=()=>playMatchedReference(btn.dataset.refname,Number(btn.dataset.from),Number(btn.dataset.to)));
-$('status').textContent=`${sourceLabel} #${run} 完了（${scores.length}匹と比較・v8.6 / 追加録音 ${userSamples.length}件）`;if(manual)$('clipMessage').textContent=`手動再判定 #${run} 完了：${inputRange}を照合しました`; 
+$('status').textContent=`${sourceLabel} #${run} 完了（${scores.length}匹と比較・v8.6 / 追加録音 ${userSamples.length}件）`;if(manual)$('clipMessage').textContent=`手動再判定 #${run} 完了：${inputRange}を照合しました`;
 if(!manual){$('clipStart').value=(top.from+offset).toFixed(2);$('clipEnd').value=(top.to+offset).toFixed(2)}
 }catch(e){$('status').textContent='判定エラー: '+e.message}finally{setBusy(false)}}
 let refStopAt=Infinity;
