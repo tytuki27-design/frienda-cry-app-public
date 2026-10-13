@@ -136,30 +136,44 @@ async function loadRefs(){
     start.disabled=true;
   }
 }
+let mediaRecorder=null,recordedBlobs=[];
 async function begin(){
   if(recording||!refs.length)return;
-  start.disabled=true;
+  start.disabled=true;audioFile.disabled=true;
   try{
-    if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();
-    if(ctx.state==='suspended')await ctx.resume();
+    if(!window.MediaRecorder)throw new Error('このブラウザはMediaRecorderに対応していません');
     stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
-    source=ctx.createMediaStreamSource(stream);
-    processor=ctx.createScriptProcessor(4096,1,1);
-    recorded=[];
-    processor.onaudioprocess=e=>{if(recording)recorded.push(new Float32Array(e.inputBuffer.getChannelData(0)))};
-    source.connect(processor);
-    silentGain=ctx.createGain();
-    silentGain.gain.value=0;
-    processor.connect(silentGain);
-    silentGain.connect(ctx.destination);
-    recording=true;
-    recordingStarted=performance.now();
-    stop.disabled=false;
-    result.classList.add('hidden');
-    status.textContent='🔴 録音中… 2〜3秒待ってから停止してください';
+    recordedBlobs=[];
+    const types=['audio/mp4','audio/webm;codecs=opus','audio/webm'];
+    const type=types.find(t=>MediaRecorder.isTypeSupported(t));
+    mediaRecorder=new MediaRecorder(stream,type?{mimeType:type}:undefined);
+    mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size)recordedBlobs.push(e.data)};
+    mediaRecorder.onerror=e=>{status.textContent='録音エラー: '+(e.error?.message||'不明なエラー')};
+    mediaRecorder.onstop=async()=>{
+      try{
+        const blob=new Blob(recordedBlobs,{type:mediaRecorder.mimeType||'audio/mp4'});
+        if(blob.size<100){throw new Error('音声データが保存されませんでした')}
+        status.textContent='録音を解析しています…';
+        if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();
+        if(ctx.state==='suspended')await ctx.resume();
+        const buffer=await ctx.decodeAudioData(await blob.arrayBuffer());
+        const samples=new Float32Array(buffer.length);
+        for(let ch=0;ch<buffer.numberOfChannels;ch++){
+          const channel=buffer.getChannelData(ch);
+          for(let i=0;i<samples.length;i++)samples[i]+=channel[i]/buffer.numberOfChannels;
+        }
+        if(buffer.duration<0.15)throw new Error('録音が短すぎます（'+buffer.duration.toFixed(2)+'秒）');
+        compareSamples(samples,buffer.sampleRate);
+      }catch(e){status.textContent='録音解析エラー: '+e.message;start.disabled=false;audioFile.disabled=false}
+      finally{if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}mediaRecorder=null}
+    };
+    mediaRecorder.start(250);
+    recording=true;recordingStarted=performance.now();
+    stop.disabled=false;result.classList.add('hidden');
+    status.textContent='🔴 録音中… 鳴き声が終わったら停止してください';
   }catch(e){
     if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
-    start.disabled=false;stop.disabled=true;
+    recording=false;start.disabled=false;stop.disabled=true;audioFile.disabled=false;
     status.textContent='マイクを使用できません: '+e.message;
   }
 }
@@ -177,23 +191,12 @@ function compareSamples(all,sampleRate){
   },50);
 }
 function finish(){
-  if(!recording)return;
+  if(!recording||!mediaRecorder)return;
   recording=false;stop.disabled=true;
+  status.textContent='録音を終了しています…';
   try{
-    processor.disconnect();source.disconnect();
-    if(silentGain){silentGain.disconnect();silentGain=null}
-    stream.getTracks().forEach(t=>t.stop());
-    stream=null;processor=null;source=null;
-    const len=recorded.reduce((a,x)=>a+x.length,0);
-    if(len<ctx.sampleRate*.15){
-      const elapsed=((performance.now()-recordingStarted)/1000).toFixed(1);
-      status.textContent=`音声データが不足しています（録音操作 ${elapsed}秒・取得 ${(len/ctx.sampleRate).toFixed(2)}秒）。iPhoneではMP3ファイル直接判定もお試しください。`;
-      start.disabled=false;return;
-    }
-    const all=new Float32Array(len);let p=0;
-    for(const x of recorded){all.set(x,p);p+=x.length}
-    compareSamples(all,ctx.sampleRate);
-  }catch(e){status.textContent='録音処理エラー: '+e.message;start.disabled=false}
+    if(mediaRecorder.state!=='inactive')mediaRecorder.stop();
+  }catch(e){status.textContent='停止エラー: '+e.message;start.disabled=false;audioFile.disabled=false}
 }
 audioFile.onchange=async()=>{
   const file=audioFile.files&&audioFile.files[0];
