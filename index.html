@@ -29,9 +29,11 @@ button{width:100%;border:0;border-radius:16px;padding:16px;font-size:17px;font-w
 <div class="ready" id="ready">特徴データを準備中…</div>
 <button id="start" disabled>判定スタート</button>
 <button id="stop" disabled>停止して判定</button>
+<div class="sub" style="margin:14px 0 5px">または音声ファイルでテスト</div>
+<input id="audioFile" type="file" accept="audio/*,.mp3,.m4a,.wav" style="width:100%;margin:8px 0 12px" disabled>
 <div class="status" id="status">準備しています</div>
 <div id="result" class="result hidden"></div>
-<p class="small">13匹の基準特徴と録音した鳴き声を比較します。比較距離は確率や一致率ではなく、小さいほど基準音に近い値です。必ず正解するわけではありません。ゲームセンターでは端末をスピーカーに近づけ、鳴き声の前後の雑音をなるべく減らしてください。</p>
+<p class="small">13匹の基準特徴と録音・選択した鳴き声を比較します。判定方法は試験版で、閾値は未校正です。比較距離は確率や一致率ではなく、小さいほど基準音に近い値です。必ず正解するわけではありません。ゲームセンターでは端末をスピーカーに近づけ、鳴き声の前後の雑音をなるべく減らしてください。</p>
 </div></main>
 <script>
 let ctx,refs=[],stream,processor,source,recorded=[],recording=false;
@@ -40,6 +42,7 @@ const stop=document.getElementById('stop');
 const ready=document.getElementById('ready');
 const status=document.getElementById('status');
 const result=document.getElementById('result');
+const audioFile=document.getElementById('audioFile');
 
 function resample(x,srcRate,target=8000){
   if(Math.abs(srcRate-target)<1)return x;
@@ -48,13 +51,23 @@ function resample(x,srcRate,target=8000){
   return o;
 }
 function trim(x){
-  let mx=0;for(const v of x)mx=Math.max(mx,Math.abs(v));
-  if(mx<.005)return x;
-  let th=mx*.08,a=0,b=x.length-1;
-  while(a<b&&Math.abs(x[a])<th)a++;
-  while(b>a&&Math.abs(x[b])<th)b--;
-  let pad=800;
-  return x.slice(Math.max(0,a-pad),Math.min(x.length,b+pad));
+  // 20msごとの音量を使って、瞬間的な雑音ではなく音のまとまりを探す
+  const block=160, count=Math.ceil(x.length/block);
+  const levels=new Float32Array(count);
+  let peak=0;
+  for(let k=0;k<count;k++){
+    let sum=0,n=0;
+    for(let i=k*block;i<Math.min(x.length,(k+1)*block);i++){sum+=x[i]*x[i];n++}
+    levels[k]=Math.sqrt(sum/Math.max(1,n));
+    peak=Math.max(peak,levels[k]);
+  }
+  if(peak<0.003)return new Float32Array(0);
+  const threshold=Math.max(0.003,peak*0.12);
+  let a=0,b=count-1;
+  while(a<count&&levels[a]<threshold)a++;
+  while(b>=a&&levels[b]<threshold)b--;
+  if(a>b)return new Float32Array(0);
+  return x.slice(Math.max(0,a*block-800),Math.min(x.length,(b+1)*block+800));
 }
 function fingerprint(x){
   x=trim(x);
@@ -85,16 +98,24 @@ function cos(a,b){
 }
 function dtw(A,B){
   if(!A.length||!B.length)return Infinity;
-  let prev=new Float64Array(B.length+1).fill(1e9);prev[0]=0;
-  for(let i=1;i<=A.length;i++){
-    let cur=new Float64Array(B.length+1).fill(1e9);
-    for(let j=1;j<=B.length;j++){
-      let cost=1-cos(A[i-1],B[j-1]);
-      cur[j]=cost+Math.min(prev[j],cur[j-1],prev[j-1]);
+  const n=A.length,m=B.length;
+  let prev=new Float64Array(m+1).fill(Infinity),prevSteps=new Uint32Array(m+1);
+  prev[0]=0;
+  for(let i=1;i<=n;i++){
+    const cur=new Float64Array(m+1).fill(Infinity),steps=new Uint32Array(m+1);
+    for(let j=1;j<=m;j++){
+      const cost=1-cos(A[i-1],B[j-1]);
+      let best=prev[j-1],count=prevSteps[j-1];
+      if(prev[j]<best){best=prev[j];count=prevSteps[j]}
+      if(cur[j-1]<best){best=cur[j-1];count=steps[j-1]}
+      cur[j]=best+cost;steps[j]=count+1;
     }
-    prev=cur;
+    prev=cur;prevSteps=steps;
   }
-  return prev[B.length]/(A.length+B.length);
+  // 経路のステップ数で割り、長い基準音が有利になる偏りを軽減
+  const average=prev[m]/Math.max(1,prevSteps[m]);
+  // 極端に長さが違う基準音への弱いペナルティ（暫定値）
+  return average+0.06*Math.abs(Math.log(n/m));
 }
 async function loadRefs(){
   try{
@@ -108,6 +129,7 @@ async function loadRefs(){
     ready.textContent='✓ '+refs.length+'匹分の特徴データを読み込みました';
     status.textContent='「判定スタート」を押してください';
     start.disabled=false;
+    audioFile.disabled=false;
   }catch(e){
     ready.textContent='特徴データの読み込みに失敗しました';
     status.textContent='エラー: '+e.message;
@@ -137,40 +159,64 @@ async function begin(){
     status.textContent='マイクを使用できません: '+e.message;
   }
 }
+function compareSamples(all,sampleRate){
+  const fp=fingerprint(resample(all,sampleRate));
+  if(fp.length<8){status.textContent='鳴き声を十分に検出できませんでした';start.disabled=false;return}
+  status.textContent='比較しています…';
+  setTimeout(()=>{
+    try{
+      const scores=refs.map(r=>({name:r.name,d:dtw(fp,r.fp)})).sort((a,b)=>a.d-b.d);
+      draw(scores.slice(0,3));
+      status.textContent='判定完了';
+    }catch(e){status.textContent='判定エラー: '+e.message}
+    finally{start.disabled=false;audioFile.disabled=false}
+  },50);
+}
 function finish(){
   if(!recording)return;
-  recording=false;
-  stop.disabled=true;
+  recording=false;stop.disabled=true;
   try{
     processor.disconnect();source.disconnect();
     stream.getTracks().forEach(t=>t.stop());
     stream=null;processor=null;source=null;
     const len=recorded.reduce((a,x)=>a+x.length,0);
     if(len<ctx.sampleRate*.15){
-      status.textContent='録音が短すぎます。もう一度お試しください。';start.disabled=false;return;
+      status.textContent='録音が短すぎます';start.disabled=false;return;
     }
     const all=new Float32Array(len);let p=0;
     for(const x of recorded){all.set(x,p);p+=x.length}
-    const fp=fingerprint(resample(all,ctx.sampleRate));
-    if(!fp.length){status.textContent='音声を検出できませんでした';start.disabled=false;return}
-    status.textContent='比較しています…';
-    setTimeout(()=>{
-      try{
-        const scores=refs.map(r=>({name:r.name,d:dtw(fp,r.fp)})).sort((a,b)=>a.d-b.d);
-        draw(scores.slice(0,3));status.textContent='判定完了';
-      }catch(e){status.textContent='判定エラー: '+e.message}
-      finally{start.disabled=false}
-    },50);
+    compareSamples(all,ctx.sampleRate);
   }catch(e){status.textContent='録音処理エラー: '+e.message;start.disabled=false}
 }
+audioFile.onchange=async()=>{
+  const file=audioFile.files&&audioFile.files[0];
+  if(!file||!refs.length||recording)return;
+  start.disabled=true;audioFile.disabled=true;
+  result.classList.add('hidden');
+  status.textContent='ファイルを解析しています…';
+  try{
+    if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();
+    const data=await file.arrayBuffer();
+    const buffer=await ctx.decodeAudioData(data);
+    const samples=new Float32Array(buffer.length);
+    for(let ch=0;ch<buffer.numberOfChannels;ch++){
+      const channel=buffer.getChannelData(ch);
+      for(let i=0;i<samples.length;i++)samples[i]+=channel[i]/buffer.numberOfChannels;
+    }
+    compareSamples(samples,buffer.sampleRate);
+  }catch(e){
+    status.textContent='ファイルを読み込めません: '+e.message;
+    start.disabled=false;audioFile.disabled=false;
+  }
+};
 function draw(s){
   result.classList.remove('hidden');
   if(!s.length||!Number.isFinite(s[0].d)){
     result.textContent='判定できませんでした。もう一度録音してください。';return;
   }
   const gap=s.length>1?s[1].d-s[0].d:0;
-  const uncertain=gap<0.015;
-  result.innerHTML=`<div class="winner"><div>最も近い鳴き声（暫定）</div><div class="name">${s[0].name}</div><div class="score">比較距離 ${s[0].d.toFixed(4)}</div><div class="small">${uncertain?'候補同士の差が小さく、判定が不確かです。':'最も近い基準音です。正解を保証するものではありません。'}</div></div>`+
+  const uncertain=gap<0.035 || s[0].d>0.65;
+  result.innerHTML=`<div class="winner"><div>最も近い鳴き声（暫定）</div><div class="name">${s[0].name}</div><div class="score">比較距離 ${s[0].d.toFixed(4)}</div><div class="small">${uncertain?'判定が不確かです。音声を確認するか再録音してください。':'最も近い基準音です。正解を保証するものではありません。'}</div></div>`+
     s.map((x,i)=>`<div class="row"><b>${i+1}位 ${x.name}</b>　比較距離 ${x.d.toFixed(4)}</div>`).join('');
 }
 start.onclick=begin;
