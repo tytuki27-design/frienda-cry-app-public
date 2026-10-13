@@ -32,6 +32,7 @@ button{width:100%;border:0;border-radius:16px;padding:16px;font-size:17px;font-w
 <div class="sub" style="margin:14px 0 5px">または音声ファイルでテスト</div>
 <input id="audioFile" type="file" accept="audio/*,.mp3,.m4a,.wav" style="width:100%;margin:8px 0 12px" disabled>
 <div class="status" id="status">準備しています</div>
+<div id="recordingDownload" class="hidden" style="margin:12px 0;padding:14px;background:#eef5ff;border-radius:14px;text-align:center"><div style="font-weight:700;margin-bottom:8px">録音音声の確認・保存</div><audio id="recordingPlayback" controls style="width:100%"></audio><a id="downloadRecording" download="frienda-microphone-recording.m4a" style="display:block;margin-top:10px;padding:12px;background:#1659c7;color:white;border-radius:12px;text-decoration:none;font-weight:700">録音した音声を保存</a><p class="small" style="margin:8px 0 0">iPhoneでは「保存」を押して共有メニューから「ファイルに保存」を選べます。</p></div>
 <div id="result" class="result hidden"></div>
 <p class="small">13匹の基準特徴と録音・選択した鳴き声を比較します。判定方法は試験版で、閾値は未校正です。比較距離は確率や一致率ではなく、小さいほど基準音に近い値です。必ず正解するわけではありません。ゲームセンターでは端末をスピーカーに近づけ、鳴き声の前後の雑音をなるべく減らしてください。</p>
 </div></main>
@@ -43,6 +44,10 @@ const ready=document.getElementById('ready');
 const status=document.getElementById('status');
 const result=document.getElementById('result');
 const audioFile=document.getElementById('audioFile');
+const recordingDownload=document.getElementById('recordingDownload');
+const recordingPlayback=document.getElementById('recordingPlayback');
+const downloadRecording=document.getElementById('downloadRecording');
+let recordingUrl=null;
 
 function resample(x,srcRate,target=8000){
   if(Math.abs(srcRate-target)<1)return x;
@@ -144,6 +149,7 @@ async function begin(){
     if(!window.MediaRecorder)throw new Error('このブラウザはMediaRecorderに対応していません');
     stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
     recordedBlobs=[];
+    recordingDownload.classList.add('hidden');
     const types=['audio/mp4','audio/webm;codecs=opus','audio/webm'];
     const type=types.find(t=>MediaRecorder.isTypeSupported(t));
     mediaRecorder=new MediaRecorder(stream,type?{mimeType:type}:undefined);
@@ -153,6 +159,13 @@ async function begin(){
       try{
         const blob=new Blob(recordedBlobs,{type:mediaRecorder.mimeType||'audio/mp4'});
         if(blob.size<100){throw new Error('音声データが保存されませんでした')}
+        if(recordingUrl)URL.revokeObjectURL(recordingUrl);
+        recordingUrl=URL.createObjectURL(blob);
+        recordingPlayback.src=recordingUrl;
+        downloadRecording.href=recordingUrl;
+        const extension=blob.type.includes('webm')?'webm':blob.type.includes('ogg')?'ogg':'m4a';
+        downloadRecording.download='frienda-microphone-recording.'+extension;
+        recordingDownload.classList.remove('hidden');
         status.textContent='録音を解析しています…';
         if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();
         if(ctx.state==='suspended')await ctx.resume();
