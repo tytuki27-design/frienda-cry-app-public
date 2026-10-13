@@ -51,7 +51,7 @@ function loadSamples(){try{const a=JSON.parse(localStorage.getItem(SAMPLE_KEY)||
 function validSample(x){return x&&names.includes(x.name)&&Array.isArray(x.frames)&&x.frames.length>=18&&x.frames.length<=180&&x.frames.every(f=>Array.isArray(f.f)&&f.f.length===bands&&f.f.every(Number.isFinite)&&Number.isFinite(f.rms))}
 function updateSampleStatus(){const counts=names.map(n=>`${n} ${userSamples.filter(x=>x.name===n).length}件`);$('sampleStatus').textContent=`登録 ${userSamples.length}件（最大65件） / この端末のブラウザに保存されます。`;$('sampleCounts').textContent=counts.join('、')}
 function storeSamples(){localStorage.setItem(SAMPLE_KEY,JSON.stringify(userSamples));updateSampleStatus()}
-function compactFrames(f){return f.slice(0,180).map(x=>({f:Array.from(x.f,v=>Math.round(v*10000)/10000),rms:Math.round(x.rms*100000)/100000}))}
+function compactFrames(f){if(f.length>180)throw Error('選択区間が長すぎます。約5.8秒以下（180フレーム以内）に短くしてください');return f.map(x=>({f:Array.from(x.f,v=>Math.round(v*10000)/10000),rms:Math.round(x.rms*100000)/100000}))}
 function sampleMatch(q,frames){const m=align(q,frames);return m?{...m,source:'追加録音'}:null}
 
 const UNCERTAIN_MARGIN=0.03; // 類似指標の差。確率や精度を表す閾値ではありません。
@@ -83,7 +83,10 @@ function align(query,reference){
     for(const scale of [.75,.9,1,1.1,1.25]){
       const span=Math.round(qn*scale);if(span>m)continue;
       const step=Math.max(1,Math.floor(span/15));
-      for(let rs=0;rs+span<=m;rs+=step){
+      // Include the last possible start, even when it is off the coarse search grid.
+      const positions=[];for(let rs=0;rs<=m-span;rs+=step)positions.push(rs);
+      if(positions[positions.length-1]!==m-span)positions.push(m-span);
+      for(const rs of positions){
         let sum=0,weight=0,matched=0,segments=[0,0,0],counts=[0,0,0];
         for(let i=0;i<qn;i++){
           const part=Math.min(2,Math.floor(i*3/qn));
