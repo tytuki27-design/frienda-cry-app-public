@@ -393,7 +393,7 @@ function compareSamples(all,sampleRate,isClip=false){
           const shortPenalty=duration<1.4 ? 0.12*(1.4-duration) : 0;
           const d=base+shortPenalty;
           const old=best.get(r.name);
-          if(!old||d<old.d)best.set(r.name,{name:r.name,d,from:a/8000,to:b/8000});
+          if(!old||d<old.d)best.set(r.name,{name:r.name,d,from:a/8000+(isClip?activeSelection.a:0),to:b/8000+(isClip?activeSelection.a:0)});
         }
       }
       const scores=[...best.values()].sort((a,b)=>a.d-b.d);
