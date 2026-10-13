@@ -1,54 +1,181 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#111111"><title>フレンダ鳴き声判定</title><style>
-*{box-sizing:border-box}body{margin:0;background:#f5f5f7;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif}main{max-width:560px;margin:auto;padding:18px 14px 50px}.card{background:#fff;border-radius:24px;padding:22px;box-shadow:0 8px 30px #00000010}h1{font-size:25px;text-align:center;margin:4px 0}.sub{text-align:center;color:#666;font-size:13px;margin:8px 0 20px}.orb{width:110px;height:110px;border-radius:55px;background:#f0f0f2;display:grid;place-items:center;font-size:48px;margin:10px auto 18px}button{width:100%;border:0;border-radius:16px;padding:16px;font-size:17px;font-weight:700;margin:6px 0}#start{background:#111;color:#fff}#stop{background:#e8e8ed}button:disabled{opacity:.4}.status{text-align:center;color:#666;min-height:24px;margin:14px 0}.result{margin-top:18px}.winner{text-align:center;background:#f7f7f9;border-radius:18px;padding:18px;margin-bottom:10px}.winner .name{font-size:28px;font-weight:800}.winner .score{font-size:17px;margin-top:4px}.row{padding:12px 4px;border-bottom:1px solid #eee}.bar{height:8px;background:#eee;border-radius:8px;overflow:hidden;margin-top:6px}.fill{height:100%;background:#111}.small{font-size:12px;color:#777;line-height:1.55;margin-top:18px}.hidden{display:none}.ready{font-size:12px;text-align:center;color:#777;margin-bottom:8px}</style></head><body><main><div class="card"><h1>🎙️ フレンダ鳴き声判定</h1><div class="sub">13匹専用・音源非公開版</div><div class="orb">🎧</div><div class="ready" id="ready">基準音源を準備中…</div><button id="start">判定スタート</button><button id="stop" disabled>停止して判定</button><div class="status" id="status">準備しています</div><div id="result" class="result hidden"></div><p class="small">判定は、13匹の鳴き声から事前生成した数値特徴と録音音声の周波数パターンを比較します。元の鳴き声音源はWeb上に配置しません。表示値はAIの確率ではなく「基準音への類似度」の目安です。ゲームセンターの雑音が大きい場合は端末をスピーカーへ近づけてください。</p></div></main>
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111111">
+<title>フレンダ鳴き声判定</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f5f7;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif}
+main{max-width:560px;margin:auto;padding:18px 14px 50px}
+.card{background:#fff;border-radius:24px;padding:22px;box-shadow:0 8px 30px #00000010}
+h1{font-size:25px;text-align:center;margin:4px 0}.sub{text-align:center;color:#666;font-size:13px;margin:8px 0 20px}
+.orb{width:110px;height:110px;border-radius:55px;background:#f0f0f2;display:grid;place-items:center;font-size:48px;margin:10px auto 18px}
+button{width:100%;border:0;border-radius:16px;padding:16px;font-size:17px;font-weight:700;margin:6px 0}
+#start{background:#111;color:#fff}#stop{background:#e8e8ed}button:disabled{opacity:.4}
+.status{text-align:center;color:#666;min-height:24px;margin:14px 0}
+.result{margin-top:18px}.winner{text-align:center;background:#f7f7f9;border-radius:18px;padding:18px;margin-bottom:10px}
+.winner .name{font-size:28px;font-weight:800}.winner .score{font-size:17px;margin-top:4px}
+.row{padding:12px 4px;border-bottom:1px solid #eee}.small{font-size:12px;color:#777;line-height:1.55;margin-top:18px}
+.hidden{display:none}.ready{font-size:12px;text-align:center;color:#777;margin-bottom:8px}
+</style>
+</head>
+<body>
+<main><div class="card">
+<h1>🎙️ フレンダ鳴き声判定</h1>
+<div class="sub">13匹専用・音源非公開版</div>
+<div class="orb">🎧</div>
+<div class="ready" id="ready">特徴データを準備中…</div>
+<button id="start" disabled>判定スタート</button>
+<button id="stop" disabled>停止して判定</button>
+<div class="status" id="status">準備しています</div>
+<div id="result" class="result hidden"></div>
+<p class="small">13匹の基準特徴と録音した鳴き声を比較します。比較距離は確率や一致率ではなく、小さいほど基準音に近い値です。必ず正解するわけではありません。ゲームセンターでは端末をスピーカーに近づけ、鳴き声の前後の雑音をなるべく減らしてください。</p>
+</div></main>
 <script>
 let ctx,refs=[],stream,processor,source,recorded=[],recording=false;
-const start = document.getElementById('start');
-const stop = document.getElementById('stop');
-const ready = document.getElementById('ready');
-const status = document.getElementById('status');
-const result = document.getElementById('result');
+const start=document.getElementById('start');
+const stop=document.getElementById('stop');
+const ready=document.getElementById('ready');
+const status=document.getElementById('status');
+const result=document.getElementById('result');
 
-function monoFromBuffer(b){let n=b.length,c=b.numberOfChannels,out=new Float32Array(n);for(let ch=0;ch<c;ch++){let d=b.getChannelData(ch);for(let i=0;i<n;i++)out[i]+=d[i]/c}return out}
-function resample(x,srcRate,target=8000){if(Math.abs(srcRate-target)<1)return x;let n=Math.floor(x.length*target/srcRate),o=new Float32Array(n),r=srcRate/target;for(let i=0;i<n;i++){let p=i*r,j=Math.floor(p),f=p-j;o[i]=(x[j]||0)*(1-f)+(x[j+1]||0)*f}return o}
-function trim(x){let mx=0;for(const v of x)mx=Math.max(mx,Math.abs(v));if(mx<.005)return x;let th=mx*.08,a=0,b=x.length-1;while(a<b&&Math.abs(x[a])<th)a++;while(b>a&&Math.abs(x[b])<th)b--;let pad=800;return x.slice(Math.max(0,a-pad),Math.min(x.length,b+pad))}
-function fingerprint(x){x=trim(x);const sr=8000,N=256,hop=128,bands=24,frames=[];const freqs=[];for(let b=0;b<bands;b++)freqs.push(120*Math.pow(3600/120,b/(bands-1)));for(let s=0;s+N<=x.length;s+=hop){let vec=[];for(const f of freqs){let k=Math.round(.5+N*f/sr),w=2*Math.PI*k/N,coeff=2*Math.cos(w),q0=0,q1=0,q2=0;for(let i=0;i<N;i++){let win=.5-.5*Math.cos(2*Math.PI*i/(N-1));q0=coeff*q1-q2+x[s+i]*win;q2=q1;q1=q0}let pow=q1*q1+q2*q2-coeff*q1*q2;vec.push(Math.log1p(Math.max(0,pow)))}let mean=vec.reduce((a,b)=>a+b,0)/bands;let norm=Math.sqrt(vec.reduce((a,v)=>a+(v-mean)*(v-mean),0))+1e-6;frames.push(vec.map(v=>(v-mean)/norm))}return frames}
-function cos(a,b){let d=0,aa=0,bb=0;for(let i=0;i<a.length;i++){d+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i]}return d/(Math.sqrt(aa*bb)+1e-6)}
-function dtw(A,B){if(!A.length||!B.length)return 9;let prev=new Float64Array(B.length+1).fill(1e9);prev[0]=0;for(let i=1;i<=A.length;i++){let cur=new Float64Array(B.length+1).fill(1e9);for(let j=1;j<=B.length;j++){let cost=1-cos(A[i-1],B[j-1]);cur[j]=cost+Math.min(prev[j],cur[j-1],prev[j-1])}prev=cur}return prev[B.length]/(A.length+B.length)}
+function resample(x,srcRate,target=8000){
+  if(Math.abs(srcRate-target)<1)return x;
+  let n=Math.floor(x.length*target/srcRate),o=new Float32Array(n),r=srcRate/target;
+  for(let i=0;i<n;i++){let p=i*r,j=Math.floor(p),f=p-j;o[i]=(x[j]||0)*(1-f)+(x[j+1]||0)*f}
+  return o;
+}
+function trim(x){
+  let mx=0;for(const v of x)mx=Math.max(mx,Math.abs(v));
+  if(mx<.005)return x;
+  let th=mx*.08,a=0,b=x.length-1;
+  while(a<b&&Math.abs(x[a])<th)a++;
+  while(b>a&&Math.abs(x[b])<th)b--;
+  let pad=800;
+  return x.slice(Math.max(0,a-pad),Math.min(x.length,b+pad));
+}
+function fingerprint(x){
+  x=trim(x);
+  const sr=8000,N=256,hop=128,bands=24,frames=[];
+  const freqs=[];
+  for(let b=0;b<bands;b++)freqs.push(120*Math.pow(3600/120,b/(bands-1)));
+  for(let s=0;s+N<=x.length;s+=hop){
+    let vec=[];
+    for(const f of freqs){
+      let k=Math.round(.5+N*f/sr),w=2*Math.PI*k/N,coeff=2*Math.cos(w),q0=0,q1=0,q2=0;
+      for(let i=0;i<N;i++){
+        let win=.5-.5*Math.cos(2*Math.PI*i/(N-1));
+        q0=coeff*q1-q2+x[s+i]*win;q2=q1;q1=q0;
+      }
+      let pow=q1*q1+q2*q2-coeff*q1*q2;
+      vec.push(Math.log1p(Math.max(0,pow)));
+    }
+    let mean=vec.reduce((a,b)=>a+b,0)/bands;
+    let norm=Math.sqrt(vec.reduce((a,v)=>a+(v-mean)*(v-mean),0))+1e-6;
+    frames.push(vec.map(v=>(v-mean)/norm));
+  }
+  return frames;
+}
+function cos(a,b){
+  let d=0,aa=0,bb=0;
+  for(let i=0;i<a.length;i++){d+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i]}
+  return d/(Math.sqrt(aa*bb)+1e-6);
+}
+function dtw(A,B){
+  if(!A.length||!B.length)return Infinity;
+  let prev=new Float64Array(B.length+1).fill(1e9);prev[0]=0;
+  for(let i=1;i<=A.length;i++){
+    let cur=new Float64Array(B.length+1).fill(1e9);
+    for(let j=1;j<=B.length;j++){
+      let cost=1-cos(A[i-1],B[j-1]);
+      cur[j]=cost+Math.min(prev[j],cur[j-1],prev[j-1]);
+    }
+    prev=cur;
+  }
+  return prev[B.length]/(A.length+B.length);
+}
 async function loadRefs(){
-  try {
-    ready.textContent='特徴データを準備中…';
-
-    const response = await fetch('./references.json', {
-      cache: 'no-store'
-    });
-
-    if (!response.ok) {
-      throw new Error('references.json HTTP ' + response.status);
+  try{
+    const response=await fetch('./references.json',{cache:'no-store'});
+    if(!response.ok)throw new Error('references.json HTTP '+response.status);
+    const data=await response.json();
+    if(!Array.isArray(data)||!data.length||data.some(r=>!r.name||!Array.isArray(r.fp)||!r.fp.length)){
+      throw new Error('特徴データの形式が不正です');
     }
-
-    refs = await response.json();
-
-    if (!Array.isArray(refs) || refs.length === 0) {
-      throw new Error('特徴データが空です');
-    }
-
-    ready.textContent='✓ 特徴データを読み込みました';
+    refs=data;
+    ready.textContent='✓ '+refs.length+'匹分の特徴データを読み込みました';
     status.textContent='「判定スタート」を押してください';
-    document.getElementById('start').disabled = false;
-
-  } catch(e) {
+    start.disabled=false;
+  }catch(e){
     ready.textContent='特徴データの読み込みに失敗しました';
-    status.textContent='エラー: ' + e.message;
+    status.textContent='エラー: '+e.message;
+    start.disabled=true;
   }
 }
-async function begin(){if (!ctx) {
-  ctx = new (window.AudioContext || window.webkitAudioContext)();
+async function begin(){
+  if(recording||!refs.length)return;
+  start.disabled=true;
+  try{
+    if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();
+    if(ctx.state==='suspended')await ctx.resume();
+    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+    source=ctx.createMediaStreamSource(stream);
+    processor=ctx.createScriptProcessor(4096,1,1);
+    recorded=[];
+    processor.onaudioprocess=e=>{if(recording)recorded.push(new Float32Array(e.inputBuffer.getChannelData(0)))};
+    source.connect(processor);
+    processor.connect(ctx.destination);
+    recording=true;
+    stop.disabled=false;
+    result.classList.add('hidden');
+    status.textContent='🔴 録音中… 鳴き声が終わったら停止';
+  }catch(e){
+    if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+    start.disabled=false;stop.disabled=true;
+    status.textContent='マイクを使用できません: '+e.message;
+  }
 }
-
-if (ctx.state === 'suspended') {
-  await ctx.resume();
-}stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});source=ctx.createMediaStreamSource(stream);processor=ctx.createScriptProcessor(4096,1,1);recorded=[];processor.onaudioprocess=e=>{if(recording)recorded.push(new Float32Array(e.inputBuffer.getChannelData(0)))};source.connect(processor);processor.connect(ctx.destination);recording=true;start.disabled=true;stop.disabled=false;result.classList.add('hidden');status.textContent='🔴 録音中… 鳴き声が終わったら停止';}
-function finish(){recording=false;processor.disconnect();source.disconnect();stream.getTracks().forEach(t=>t.stop());let len=recorded.reduce((a,x)=>a+x.length,0),all=new Float32Array(len),p=0;for(const x of recorded){all.set(x,p);p+=x.length}let x=resample(all,ctx.sampleRate),fp=fingerprint(x);status.textContent='比較しています…';setTimeout(()=>{let scores=refs.map(r=>({name:r.name,d:dtw(fp,r.fp)})).sort((a,b)=>a.d-b.d);let min=scores[0].d,max=Math.max(...scores.map(x=>x.d)),den=Math.max(.001,max-min);scores.forEach(s=>s.sim=Math.max(0,Math.min(99,100*(1-(s.d-min)/(den*1.35)))));scores[0].sim=Math.max(scores[0].sim,70);draw(scores.slice(0,3));start.disabled=false;stop.disabled=true;status.textContent='判定完了';},50)}
-function draw(s){result.classList.remove('hidden');result.innerHTML=`<div class="winner"><div>最も近い鳴き声</div><div class="name">${s[0].name}</div><div class="score">類似度 ${s[0].sim.toFixed(0)}%</div></div>`+s.map((x,i)=>`<div class="row"><b>${i+1}位 ${x.name}</b>　${x.sim.toFixed(0)}%<div class="bar"><div class="fill" style="width:${x.sim}%"></div></div></div>`).join('')}
-start.onclick=()=>begin().catch(e=>status.textContent='マイクを使用できません: '+e.message);stop.onclick=finish;loadRefs().catch(e=>{ready.textContent='基準音源の読み込みに失敗しました';status.textContent='HTTPSサーバー上で開いてください: '+e.message});
-</script></body></html>
+function finish(){
+  if(!recording)return;
+  recording=false;
+  stop.disabled=true;
+  try{
+    processor.disconnect();source.disconnect();
+    stream.getTracks().forEach(t=>t.stop());
+    stream=null;processor=null;source=null;
+    const len=recorded.reduce((a,x)=>a+x.length,0);
+    if(len<ctx.sampleRate*.15){
+      status.textContent='録音が短すぎます。もう一度お試しください。';start.disabled=false;return;
+    }
+    const all=new Float32Array(len);let p=0;
+    for(const x of recorded){all.set(x,p);p+=x.length}
+    const fp=fingerprint(resample(all,ctx.sampleRate));
+    if(!fp.length){status.textContent='音声を検出できませんでした';start.disabled=false;return}
+    status.textContent='比較しています…';
+    setTimeout(()=>{
+      try{
+        const scores=refs.map(r=>({name:r.name,d:dtw(fp,r.fp)})).sort((a,b)=>a.d-b.d);
+        draw(scores.slice(0,3));status.textContent='判定完了';
+      }catch(e){status.textContent='判定エラー: '+e.message}
+      finally{start.disabled=false}
+    },50);
+  }catch(e){status.textContent='録音処理エラー: '+e.message;start.disabled=false}
+}
+function draw(s){
+  result.classList.remove('hidden');
+  if(!s.length||!Number.isFinite(s[0].d)){
+    result.textContent='判定できませんでした。もう一度録音してください。';return;
+  }
+  const gap=s.length>1?s[1].d-s[0].d:0;
+  const uncertain=gap<0.015;
+  result.innerHTML=`<div class="winner"><div>最も近い鳴き声（暫定）</div><div class="name">${s[0].name}</div><div class="score">比較距離 ${s[0].d.toFixed(4)}</div><div class="small">${uncertain?'候補同士の差が小さく、判定が不確かです。':'最も近い基準音です。正解を保証するものではありません。'}</div></div>`+
+    s.map((x,i)=>`<div class="row"><b>${i+1}位 ${x.name}</b>　比較距離 ${x.d.toFixed(4)}</div>`).join('');
+}
+start.onclick=begin;
+stop.onclick=finish;
+loadRefs();
+</script>
+</body>
+</html>
