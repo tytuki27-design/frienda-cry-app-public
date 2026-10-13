@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>フレンダ鳴き声判定 v8.2</title>
+<title>フレンダ鳴き声判定 v8.3</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f5f5f7;color:#171717;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif}
 main{max-width:620px;margin:auto;padding:20px 14px 60px}.card{background:white;border-radius:24px;padding:22px;box-shadow:0 5px 28px #0001}
@@ -14,7 +14,7 @@ label{font-size:14px;font-weight:600}#status{text-align:center;color:#555;margin
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hidden{display:none}
 audio{width:100%;margin-top:8px}.danger{color:#9d3327}
 </style></head><body><main><div class="card">
-<h1>🎙️ フレンダ鳴き声判定</h1><div class="sub">v8.2 全体パターン照合・13匹のMP3内蔵</div>
+<h1>🎙️ フレンダ鳴き声判定</h1><div class="sub">v8.3 全体パターン照合・13匹のMP3内蔵</div>
 <div id="ready" class="small" style="text-align:center">基準MP3を準備中…</div>
 <button class="primary" id="start" disabled>🎤 判定スタート</button><button id="stop" disabled>停止して判定</button>
 <label for="file">または録音ファイルを選択</label><input id="file" type="file" accept="audio/*,.m4a,.mp3,.wav">
@@ -48,42 +48,40 @@ function features(samples,rate){const x=resample(samples,rate),out=[];const re=n
 for(let pos=0;pos+fftSize<=x.length;pos+=hop){let rms=0;for(let j=0;j<fftSize;j++){const v=x[pos+j];rms+=v*v;re[j]=v*(.5-.5*Math.cos(2*Math.PI*j/(fftSize-1)));im[j]=0}rms=Math.sqrt(rms/fftSize);fft(re,im);const f=new Float32Array(bands);let avg=0;for(let b=0;b<bands;b++){let power=0;const from=Math.max(1,edges[b]),to=Math.max(from+1,edges[b+1]);for(let k=from;k<to;k++)power+=re[k]*re[k]+im[k]*im[k];f[b]=Math.log(1+power/Math.max(1,to-from));avg+=f[b]}avg/=bands;let norm=0;for(let b=0;b<bands;b++){f[b]-=avg;norm+=f[b]*f[b]}norm=Math.sqrt(norm)||1;for(let b=0;b<bands;b++)f[b]/=norm;out.push({f,rms})}return out}
 function sim(a,b){let dot=0;for(let i=0;i<bands;i++)dot+=a[i]*b[i];return dot}
 function align(query,reference){
-  // 録音側の1.5秒を、基準MP3の全体的な時間推移と照合する。
-  // 一点だけ似た音が高得点になるのを避けるため、各フレームの順序を保つDTWを使用。
+  // v8.3: 入力区間のほぼ全体を使い、順序を保った全長照合を行う。
+  // 参照側も複数の長さ・位置を試すが、短い断片だけでは評価しない。
   const n=query.length,m=reference.length;
   if(n<18||m<18)return null;
-  const windows=[];
-  const length=Math.min(n,Math.round(1.5*targetRate/hop));
-  for(let start=0;start+length<=n;start+=Math.max(8,Math.floor(length/3)))windows.push(start);
-  if(windows.length===0)windows.push(0);
-  const last=Math.max(0,n-length);if(windows[windows.length-1]!==last)windows.push(last);
+  const qmax=Math.min(n,Math.round(3.0*targetRate/hop));
+  const starts=n<=qmax?[0]:Array.from({length:Math.ceil((n-qmax)/15)+1},(_,i)=>Math.min(n-qmax,i*15));
   let best={score:-2,from:0,to:0};
-  for(const start of windows){
-    const q=query.slice(start,start+length),qn=q.length;
-    // 低音量部分の誤一致を抑える。音量を類似度に直接乗じない。
-    const rms=q.map(x=>x.rms).sort((a,b)=>a-b);
-    const threshold=Math.max(.0005,rms[Math.floor(rms.length*.65)]*.16);
+  for(const start of starts){
+    const q=query.slice(start,start+qmax),qn=q.length;
+    const energies=q.map(x=>x.rms).sort((a,b)=>a-b);
+    const threshold=Math.max(.00025,energies[Math.floor(energies.length*.6)]*.22);
     const active=q.filter(x=>x.rms>=threshold).length;
-    if(active<Math.floor(qn*.45))continue;
-    // 全体の音の流れを比較。長さは0.85～1.2倍まで許容。
-    for(const scale of [.85,1,1.15]){
+    if(active<qn*.55)continue;
+    for(const scale of [.75,.9,1,1.1,1.25]){
       const span=Math.round(qn*scale);if(span>m)continue;
-      for(let rs=0;rs+span<=m;rs+=4){
-        let sum=0,count=0,first=-1,lastActive=-1;
+      const step=Math.max(1,Math.floor(span/15));
+      for(let rs=0;rs+span<=m;rs+=step){
+        let sum=0,weight=0,matched=0,segments=[0,0,0],counts=[0,0,0];
         for(let i=0;i<qn;i++){
+          const part=Math.min(2,Math.floor(i*3/qn));
           if(q[i].rms<threshold)continue;
-          const j=rs+Math.min(span-1,Math.round(i*scale));
+          const j=rs+Math.min(span-1,Math.round(i*(span-1)/Math.max(1,qn-1)));
           const ref=reference[j];
-          if(ref.rms<.00035)continue;
+          if(ref.rms<.0003)continue;
           const similarity=sim(q[i].f,ref.f);
-          sum+=similarity;count++;
-          if(first<0)first=i;
-          lastActive=i;
+          const w=Math.min(1,q[i].rms/.003)*Math.min(1,ref.rms/.003);
+          sum+=w*similarity;weight+=w;matched++;segments[part]+=similarity;counts[part]++;
         }
-        if(count<qn*.45)continue;
-        const coverage=count/qn;
-        const continuity=(lastActive-first+1)/qn;
-        const score=sum/count * Math.min(1,coverage/.8) * Math.min(1,continuity/.75);
+        if(matched<qn*.58||weight<qn*.15||counts.some(x=>x<qn*.12))continue;
+        const sectionScores=segments.map((v,i)=>v/counts[i]);
+        const overall=sum/weight;
+        // 一部の区間だけが似るケースを抑制する
+        const weak=Math.min(...sectionScores);
+        const score=.55*overall+.45*weak-.035*Math.abs(Math.log(scale));
         if(score>best.score)best={score,from:start*hop/targetRate,to:(start+qn)*hop/targetRate};
       }
     }
@@ -96,7 +94,7 @@ try{const q=features(samples,rate);if(q.length<18)throw Error('音声が短す�
 const scores=[];for(const [name,ref] of refs){const match=align(q,ref.features);if(match)scores.push({name,...match})}
 scores.sort((a,b)=>b.score-a.score);if(!scores.length)throw Error('照合できませんでした。音量や録音区間を確認してください');
 const top=scores[0];$('results').classList.remove('hidden');$('results').innerHTML=`<div class="winner"><div style="font-size:13px;font-weight:700;color:#2563eb;margin-bottom:8px">${sourceLabel} #${run} / 使用区間 ${inputRange}</div><div>最も近い鳴き声（暫定）</div><strong>${top.name}</strong><div>類似指標 ${top.score.toFixed(3)}</div><div class="small">検出区間 ${(top.from+offset).toFixed(2)}〜${(top.to+offset).toFixed(2)}秒</div><div class="small danger">試験版のため、正解は保証できません</div></div>`+scores.slice(0,5).map((x,i)=>`<div class="item"><b>${i+1}位 ${x.name}</b><span>${x.score.toFixed(3)}</span></div>`).join('');
-$('status').textContent=`${sourceLabel} #${run} 完了（${scores.length}匹と比較・v8.2）`;if(manual)$('clipMessage').textContent=`手動再判定 #${run} 完了：${inputRange}を照合しました`; 
+$('status').textContent=`${sourceLabel} #${run} 完了（${scores.length}匹と比較・v8.3）`;if(manual)$('clipMessage').textContent=`手動再判定 #${run} 完了：${inputRange}を照合しました`; 
 if(!manual){$('clipStart').value=(top.from+offset).toFixed(2);$('clipEnd').value=(top.to+offset).toFixed(2)}
 }catch(e){$('status').textContent='判定エラー: '+e.message}finally{setBusy(false)}}
 function store(samples,rate){lastSamples=samples;lastRate=rate;$('clip').classList.remove('hidden');$('clipStart').max=(samples.length/rate).toFixed(2);$('clipEnd').max=(samples.length/rate).toFixed(2);$('clipStart').value='0';$('clipEnd').value=Math.min(2,samples.length/rate).toFixed(2)}
