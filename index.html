@@ -29,7 +29,7 @@ async function loadRefs(){
 
     ready.textContent='✓ 特徴データを読み込みました';
     status.textContent='「判定スタート」を押してください';
-    start.disabled=false;
+    document.getElementById('start').disabled = false;
 
   } catch(e) {
     ready.textContent='特徴データの読み込みに失敗しました';
