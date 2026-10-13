@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#111111">
-<title>フレンダ鳴き声判定 v4</title>
+<title>フレンダ鳴き声判定 v6</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#f5f5f7;color:#111;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif}
@@ -24,7 +24,7 @@ button{width:100%;border:0;border-radius:16px;padding:16px;font-size:17px;font-w
 <body>
 <main><div class="card">
 <h1>🎙️ フレンダ鳴き声判定</h1>
-<div class="sub">v5 学習機能付き・13匹専用</div>
+<div class="sub">v6 区間確認・学習品質チェック</div>
 <div class="orb">🎧</div>
 <div class="ready" id="ready">特徴データを準備中…</div>
 <button id="start" disabled>判定スタート</button>
@@ -34,6 +34,16 @@ button{width:100%;border:0;border-radius:16px;padding:16px;font-size:17px;font-w
 <div class="status" id="status">準備しています</div>
 <div id="recordingDownload" class="hidden" style="margin:12px 0;padding:14px;background:#eef5ff;border-radius:14px;text-align:center"><div style="font-weight:700;margin-bottom:8px">録音音声の確認・保存</div><audio id="recordingPlayback" controls style="width:100%"></audio><a id="downloadRecording" download="frienda-microphone-recording.m4a" style="display:block;margin-top:10px;padding:12px;background:#1659c7;color:white;border-radius:12px;text-decoration:none;font-weight:700">録音した音声を保存</a><p class="small" style="margin:8px 0 0">iPhoneでは「保存」を押して共有メニューから「ファイルに保存」を選べます。</p></div>
 <div id="result" class="result hidden"></div>
+<div id="diagnostics" class="hidden" style="border-top:1px solid #ddd;margin-top:20px;padding-top:16px">
+<h2 style="font-size:18px">🔎 録音・学習品質チェック（v6）</h2>
+<div id="qualityInfo" class="small" style="white-space:pre-line"></div>
+<p class="small">鳴き声だけが聞こえる区間を指定してください。開始・終了は録音全体の秒数です。選択区間を聞いてから、その区間だけで再判定・学習できます。</p>
+<label for="clipStart">開始（秒）</label><input id="clipStart" type="number" min="0" step="0.1" value="0" style="width:100%;padding:10px;font-size:16px">
+<label for="clipEnd">終了（秒）</label><input id="clipEnd" type="number" min="0" step="0.1" value="2" style="width:100%;padding:10px;font-size:16px">
+<button id="playClip" type="button" style="background:#e8e8ed">▶ 選択区間を再生</button>
+<button id="judgeClip" type="button" style="background:#dce8ff">選択区間だけで再判定</button>
+<div id="clipMessage" class="small"></div>
+</div>
 <div style="border-top:1px solid #ddd;margin-top:22px;padding-top:18px">
 <h2 style="font-size:18px">🧠 AI学習（試験版）</h2>
 <p class="small">正解が分かっている音声を選び、教師データとして追加します。学習済みの音声特徴から近傍分類します。学習前は従来判定のみです。録音音声も、判定後に正解を指定して登録できます。</p>
@@ -63,6 +73,44 @@ const trainingLabel=document.getElementById('trainingLabel');
 const addTraining=document.getElementById('addTraining');
 const trainingInfo=document.getElementById('trainingInfo');
 let trainingExamples=[],lastTrainingVector=null,lastAiPrediction=null;
+let lastOriginalSamples=null,lastOriginalRate=0,lastChosenRange=null,clipSource=null,activeSelection=null;
+const diagnostics=document.getElementById('diagnostics');
+const qualityInfo=document.getElementById('qualityInfo');
+const clipStart=document.getElementById('clipStart');
+const clipEnd=document.getElementById('clipEnd');
+const clipMessage=document.getElementById('clipMessage');
+function qualityCheck(samples,rate){
+  const n=samples.length,seconds=n/rate;let peak=0,sum=0,clip=0;
+  const blocks=[];const bs=Math.max(1,Math.round(rate*0.1));
+  for(let i=0;i<n;i+=bs){let q=0;for(let j=i;j<Math.min(n,i+bs);j++){
+    const v=samples[j];peak=Math.max(peak,Math.abs(v));sum+=v*v;q+=v*v;if(Math.abs(v)>=0.98)clip++;
+  }blocks.push(Math.sqrt(q/Math.max(1,Math.min(bs,n-i))));}
+  const rms=Math.sqrt(sum/Math.max(1,n));const threshold=Math.max(0.006,Math.max(...blocks,0)*0.18);
+  const active=blocks.filter(x=>x>=threshold).length/Math.max(1,blocks.length);
+  const warnings=[];
+  if(peak<0.02)warnings.push('音量が非常に小さい可能性があります');
+  if(clip/n>0.001)warnings.push('音割れの可能性があります');
+  if(active>0.85)warnings.push('全体に音があり、BGMや話し声が混ざっている可能性があります');
+  if(seconds<1)warnings.push('録音が短く、判定が不安定になる可能性があります');
+  return {seconds,peak,rms,active,clip:clip/n,warnings};
+}
+function getClip(){
+  if(!lastOriginalSamples)throw Error('先に音声を読み込んでください');
+  const a=Number(clipStart.value),b=Number(clipEnd.value),length=lastOriginalSamples.length/lastOriginalRate;
+  if(!Number.isFinite(a)||!Number.isFinite(b)||a<0||b>length+0.001||b-a<0.5)throw Error('終了は開始より0.5秒以上後、録音の長さ以内にしてください');
+  return {a,b,samples:lastOriginalSamples.slice(Math.round(a*lastOriginalRate),Math.round(b*lastOriginalRate))};
+}
+document.getElementById('playClip').onclick=async()=>{
+  try{const {samples}=getClip();if(!ctx)ctx=new (window.AudioContext||window.webkitAudioContext)();await ctx.resume();
+    if(clipSource){try{clipSource.stop()}catch(e){}}
+    const buffer=ctx.createBuffer(1,samples.length,lastOriginalRate);buffer.copyToChannel(samples,0);
+    clipSource=ctx.createBufferSource();clipSource.buffer=buffer;clipSource.connect(ctx.destination);clipSource.start();clipMessage.textContent='選択区間を再生しています';
+  }catch(e){clipMessage.textContent=e.message}
+};
+document.getElementById('judgeClip').onclick=()=>{
+  try{const {a,b,samples}=getClip();activeSelection={a,b};compareSamples(samples,lastOriginalRate,true);clipMessage.textContent='選択区間で再判定しました。学習ボタンもこの区間を登録します。';}
+  catch(e){clipMessage.textContent=e.message}
+};
 function summarizeFeatures(samples,sampleRate){
   const x=normalizeAudio(resample(samples,sampleRate));
   // 最も音量が大きい2秒間を代表区間とする（暫定）
@@ -99,7 +147,7 @@ addTraining.onclick=()=>{
   if(!lastTrainingVector)return;
   trainingExamples.push({label:trainingLabel.value,features:[...lastTrainingVector]});
   updateTrainingInfo();
-  status.textContent=trainingLabel.value+'の教師データを登録しました';
+  status.textContent=trainingLabel.value+'の教師データを登録しました'+(activeSelection?'（選択区間 '+activeSelection.a.toFixed(2)+'〜'+activeSelection.b.toFixed(2)+'秒）':'（自動抽出区間）');
 };
 document.getElementById('exportTraining').onclick=()=>{
   const blob=new Blob([JSON.stringify({version:1,examples:trainingExamples},null,2)],{type:'application/json'});
@@ -300,7 +348,15 @@ function normalizeAudio(x){
   for(let i=0;i<x.length;i++)out[i]=x[i]*gain;
   return out;
 }
-function compareSamples(all,sampleRate){
+function compareSamples(all,sampleRate,isClip=false){
+  if(!isClip){
+    lastOriginalSamples=new Float32Array(all);lastOriginalRate=sampleRate;activeSelection=null;
+    const q=qualityCheck(all,sampleRate);
+    diagnostics.classList.remove('hidden');
+    qualityInfo.textContent=`録音長 ${q.seconds.toFixed(2)}秒 / RMS ${q.rms.toFixed(4)} / 最大振幅 ${q.peak.toFixed(3)}\n音がある区間の割合 ${(q.active*100).toFixed(0)}% / 音割れ疑い ${(q.clip*100).toFixed(2)}%\n${q.warnings.length?q.warnings.join('\n'):'大きな品質警告はありません（鳴き声の正しさは未判定）'}`;
+    clipStart.value='0.0';clipEnd.value=Math.min(q.seconds,2).toFixed(2);clipStart.max=q.seconds;clipEnd.max=q.seconds;
+    clipMessage.textContent='再判定前に、鳴き声の開始と終了を指定してください。';
+  }
   lastTrainingVector=summarizeFeatures(all,sampleRate);
   lastAiPrediction=lastTrainingVector?predictLearned(lastTrainingVector):null;
   addTraining.disabled=!lastTrainingVector;
@@ -343,7 +399,11 @@ function compareSamples(all,sampleRate){
       const scores=[...best.values()].sort((a,b)=>a.d-b.d);
       if(!scores.length)throw new Error('比較できる音声がありません');
       draw(scores);
-      status.textContent='判定完了（'+candidates.length+'区間を比較・v5）';
+      if(!isClip && scores[0]){
+        clipStart.value=scores[0].from.toFixed(2);clipEnd.value=scores[0].to.toFixed(2);
+        clipMessage.textContent='初期値は従来判定の1位の検出区間です。再生して鳴き声か確認し、必要なら秒数を修正してください。';
+      }
+      status.textContent='判定完了（'+candidates.length+'区間を比較・v6）';
     }catch(e){status.textContent='判定エラー: '+e.message}
     finally{start.disabled=false;audioFile.disabled=false}
   },50);
@@ -390,7 +450,7 @@ function draw(s){
     s.slice(0,3).map((x,i)=>`<div class="row"><b>${i+1}位 ${x.name}</b>　比較距離 ${x.d.toFixed(4)}</div>`).join('')+
     (arceus?`<div class="row"><b>診断用：アルセウス ${arceusIndex+1}位 / ${s.length}匹</b><div>比較距離 ${arceus.d.toFixed(4)}・検出区間 ${arceus.from.toFixed(2)}〜${arceus.to.toFixed(2)}秒</div></div>`:'')+
     (lastAiPrediction?`<div class="row"><b>🧠 学習データによるAI候補：${lastAiPrediction.name}</b><div>特徴距離 ${lastAiPrediction.distance.toFixed(4)} / 学習済み ${lastAiPrediction.classes}種類（試験版）</div></div>`:'<p class="small">🧠 AI判定は学習データ不足のため未実行です。正解音声を2種類以上、各2件以上登録してください。</p>')+
-    `<p class="small">v5試験版：従来判定と教師データによる近傍分類を併記します。AI候補は確率ではありません。精度は未検証です。</p>`;
+    `<p class="small">v6試験版：従来判定と教師データによる近傍分類を併記します。AI候補は確率ではありません。精度は未検証です。</p>`;
 }
 start.onclick=begin;
 stop.onclick=finish;
