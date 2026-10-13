@@ -24,7 +24,7 @@ button{width:100%;border:0;border-radius:16px;padding:16px;font-size:17px;font-w
 <body>
 <main><div class="card">
 <h1>🎙️ フレンダ鳴き声判定</h1>
-<div class="sub">v4 試験版・13匹専用・音源非公開</div>
+<div class="sub">v5 学習機能付き・13匹専用</div>
 <div class="orb">🎧</div>
 <div class="ready" id="ready">特徴データを準備中…</div>
 <button id="start" disabled>判定スタート</button>
@@ -34,6 +34,17 @@ button{width:100%;border:0;border-radius:16px;padding:16px;font-size:17px;font-w
 <div class="status" id="status">準備しています</div>
 <div id="recordingDownload" class="hidden" style="margin:12px 0;padding:14px;background:#eef5ff;border-radius:14px;text-align:center"><div style="font-weight:700;margin-bottom:8px">録音音声の確認・保存</div><audio id="recordingPlayback" controls style="width:100%"></audio><a id="downloadRecording" download="frienda-microphone-recording.m4a" style="display:block;margin-top:10px;padding:12px;background:#1659c7;color:white;border-radius:12px;text-decoration:none;font-weight:700">録音した音声を保存</a><p class="small" style="margin:8px 0 0">iPhoneでは「保存」を押して共有メニューから「ファイルに保存」を選べます。</p></div>
 <div id="result" class="result hidden"></div>
+<div style="border-top:1px solid #ddd;margin-top:22px;padding-top:18px">
+<h2 style="font-size:18px">🧠 AI学習（試験版）</h2>
+<p class="small">正解が分かっている音声を選び、教師データとして追加します。学習済みの音声特徴から近傍分類します。学習前は従来判定のみです。録音音声も、判定後に正解を指定して登録できます。</p>
+<select id="trainingLabel" style="width:100%;padding:12px;font-size:16px;margin:8px 0"></select>
+<button id="addTraining" type="button" disabled style="background:#dce8ff">直前の音声を正解として学習</button>
+<div id="trainingInfo" class="small">学習データ：0件</div>
+<button id="exportTraining" type="button" style="background:#e8e8ed">学習データを保存（JSON）</button>
+<label class="small" for="importTraining">保存した学習データを読み込む</label>
+<input id="importTraining" type="file" accept="application/json,.json" style="width:100%;margin:8px 0">
+<button id="clearTraining" type="button" style="background:#f9e4e4">学習データを全削除</button>
+</div>
 <p class="small">13匹の基準特徴と録音・選択した鳴き声を比較します。音量補正と区間ごとの照合を行います。判定方法は試験版で、閾値は未校正です。比較距離は確率や一致率ではなく、小さいほど基準音に近い値です。必ず正解するわけではありません。ゲームセンターでは端末をスピーカーに近づけ、鳴き声の前後の雑音をなるべく減らしてください。</p>
 </div></main>
 <script>
@@ -48,6 +59,64 @@ const recordingDownload=document.getElementById('recordingDownload');
 const recordingPlayback=document.getElementById('recordingPlayback');
 const downloadRecording=document.getElementById('downloadRecording');
 let recordingUrl=null;
+const trainingLabel=document.getElementById('trainingLabel');
+const addTraining=document.getElementById('addTraining');
+const trainingInfo=document.getElementById('trainingInfo');
+let trainingExamples=[],lastTrainingVector=null,lastAiPrediction=null;
+function summarizeFeatures(samples,sampleRate){
+  const x=normalizeAudio(resample(samples,sampleRate));
+  // 最も音量が大きい2秒間を代表区間とする（暫定）
+  const block=800, windowBlocks=20, energies=[];
+  for(let i=0;i<x.length;i+=block){let sum=0;for(let j=i;j<Math.min(x.length,i+block);j++)sum+=x[j]*x[j];energies.push(sum)}
+  let best=0,bestSum=-1;
+  for(let i=0;i<energies.length;i++){
+    let sum=0;for(let j=i;j<Math.min(energies.length,i+windowBlocks);j++)sum+=energies[j];
+    if(sum>bestSum){bestSum=sum;best=i}
+  }
+  const fp=fingerprint(x.slice(best*block,Math.min(x.length,(best+windowBlocks)*block)));
+  if(fp.length<12)return null;
+  const means=Array(24).fill(0),stds=Array(24).fill(0);
+  for(const f of fp)for(let j=0;j<24;j++)means[j]+=f[j]/fp.length;
+  for(const f of fp)for(let j=0;j<24;j++)stds[j]+=(f[j]-means[j])**2/fp.length;
+  return [...means,...stds.map(Math.sqrt)];
+}
+function featureDistance(a,b){let d=0;for(let i=0;i<48;i++)d+=(a[i]-b[i])**2;return Math.sqrt(d/48)}
+function predictLearned(v){
+  const counts={};for(const e of trainingExamples)counts[e.label]=(counts[e.label]||0)+1;
+  const labels=Object.keys(counts).filter(k=>counts[k]>=2);
+  if(labels.length<2)return null;
+  const ranked=trainingExamples.filter(e=>labels.includes(e.label)).map(e=>({label:e.label,d:featureDistance(v,e.features)})).sort((a,b)=>a.d-b.d);
+  const top=ranked.slice(0,Math.min(5,ranked.length));
+  const votes={};for(const e of top)votes[e.label]=(votes[e.label]||0)+1/(e.d+0.08);
+  const winner=Object.entries(votes).sort((a,b)=>b[1]-a[1])[0];
+  return {name:winner[0],distance:ranked.find(e=>e.label===winner[0]).d,classes:labels.length};
+}
+function updateTrainingInfo(){
+  const counts={};for(const e of trainingExamples)counts[e.label]=(counts[e.label]||0)+1;
+  trainingInfo.textContent='学習データ：'+trainingExamples.length+'件 / '+Object.entries(counts).map(([k,v])=>k+' '+v+'件').join('、')+'。AI判定には2種類以上、各2件以上が必要です。';
+}
+addTraining.onclick=()=>{
+  if(!lastTrainingVector)return;
+  trainingExamples.push({label:trainingLabel.value,features:[...lastTrainingVector]});
+  updateTrainingInfo();
+  status.textContent=trainingLabel.value+'の教師データを登録しました';
+};
+document.getElementById('exportTraining').onclick=()=>{
+  const blob=new Blob([JSON.stringify({version:1,examples:trainingExamples},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='frienda-training-data.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000);
+};
+document.getElementById('importTraining').onchange=async e=>{
+  try{
+    const data=JSON.parse(await e.target.files[0].text());
+    if(!Array.isArray(data.examples)||data.examples.some(v=>typeof v.label!=='string'||!Array.isArray(v.features)||v.features.length!==48||v.features.some(n=>!Number.isFinite(n))))throw Error('形式が正しくありません');
+    trainingExamples=data.examples.filter(e=>refs.some(r=>r.name===e.label));
+    updateTrainingInfo();status.textContent='学習データを読み込みました';
+  }catch(err){status.textContent='学習データ読込エラー: '+err.message}
+};
+document.getElementById('clearTraining').onclick=()=>{
+  if(confirm('学習データをすべて削除しますか？保存済みJSONは削除されません。')){trainingExamples=[];updateTrainingInfo()}
+};
+
 
 function resample(x,srcRate,target=8000){
   if(Math.abs(srcRate-target)<1)return x;
@@ -131,6 +200,9 @@ async function loadRefs(){
       throw new Error('特徴データの形式が不正です');
     }
     refs=data;
+    trainingLabel.innerHTML='';
+    for(const r of refs){const opt=document.createElement('option');opt.value=r.name;opt.textContent=r.name;trainingLabel.appendChild(opt)}
+    updateTrainingInfo();
     ready.textContent='✓ '+refs.length+'匹分の特徴データを読み込みました';
     status.textContent='「判定スタート」を押してください';
     start.disabled=false;
@@ -229,6 +301,9 @@ function normalizeAudio(x){
   return out;
 }
 function compareSamples(all,sampleRate){
+  lastTrainingVector=summarizeFeatures(all,sampleRate);
+  lastAiPrediction=lastTrainingVector?predictLearned(lastTrainingVector):null;
+  addTraining.disabled=!lastTrainingVector;
   start.disabled=true;audioFile.disabled=true;
   status.textContent='鳴き声の候補区間を比較しています…';
   setTimeout(()=>{
@@ -268,7 +343,7 @@ function compareSamples(all,sampleRate){
       const scores=[...best.values()].sort((a,b)=>a.d-b.d);
       if(!scores.length)throw new Error('比較できる音声がありません');
       draw(scores);
-      status.textContent='判定完了（'+candidates.length+'区間を比較・v4）';
+      status.textContent='判定完了（'+candidates.length+'区間を比較・v5）';
     }catch(e){status.textContent='判定エラー: '+e.message}
     finally{start.disabled=false;audioFile.disabled=false}
   },50);
@@ -314,7 +389,8 @@ function draw(s){
   result.innerHTML=`<div class="winner"><div>最も近い鳴き声（暫定）</div><div class="name">${s[0].name}</div><div class="score">比較距離 ${s[0].d.toFixed(4)}</div><div class="small">検出区間 ${s[0].from.toFixed(2)}〜${s[0].to.toFixed(2)}秒</div><div class="small">${uncertain?'判定が不確かです。音声を確認するか再録音してください。':'最も近い基準音です。正解を保証するものではありません。'}</div></div>`+
     s.slice(0,3).map((x,i)=>`<div class="row"><b>${i+1}位 ${x.name}</b>　比較距離 ${x.d.toFixed(4)}</div>`).join('')+
     (arceus?`<div class="row"><b>診断用：アルセウス ${arceusIndex+1}位 / ${s.length}匹</b><div>比較距離 ${arceus.d.toFixed(4)}・検出区間 ${arceus.from.toFixed(2)}〜${arceus.to.toFixed(2)}秒</div></div>`:'')+
-    `<p class="small">v4試験版：診断順位は精度確認用です。アルセウスを優先する特別処理はありません。距離や警告の基準は未校正です。</p>`;
+    (lastAiPrediction?`<div class="row"><b>🧠 学習データによるAI候補：${lastAiPrediction.name}</b><div>特徴距離 ${lastAiPrediction.distance.toFixed(4)} / 学習済み ${lastAiPrediction.classes}種類（試験版）</div></div>`:'<p class="small">🧠 AI判定は学習データ不足のため未実行です。正解音声を2種類以上、各2件以上登録してください。</p>')+
+    `<p class="small">v5試験版：従来判定と教師データによる近傍分類を併記します。AI候補は確率ではありません。精度は未検証です。</p>`;
 }
 start.onclick=begin;
 stop.onclick=finish;
