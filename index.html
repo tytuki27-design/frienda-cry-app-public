@@ -34,7 +34,7 @@ button{width:100%;border:0;border-radius:16px;padding:16px;font-size:17px;font-w
 <div class="status" id="status">準備しています</div>
 <div id="recordingDownload" class="hidden" style="margin:12px 0;padding:14px;background:#eef5ff;border-radius:14px;text-align:center"><div style="font-weight:700;margin-bottom:8px">録音音声の確認・保存</div><audio id="recordingPlayback" controls style="width:100%"></audio><a id="downloadRecording" download="frienda-microphone-recording.m4a" style="display:block;margin-top:10px;padding:12px;background:#1659c7;color:white;border-radius:12px;text-decoration:none;font-weight:700">録音した音声を保存</a><p class="small" style="margin:8px 0 0">iPhoneでは「保存」を押して共有メニューから「ファイルに保存」を選べます。</p></div>
 <div id="result" class="result hidden"></div>
-<p class="small">13匹の基準特徴と録音・選択した鳴き声を比較します。判定方法は試験版で、閾値は未校正です。比較距離は確率や一致率ではなく、小さいほど基準音に近い値です。必ず正解するわけではありません。ゲームセンターでは端末をスピーカーに近づけ、鳴き声の前後の雑音をなるべく減らしてください。</p>
+<p class="small">13匹の基準特徴と録音・選択した鳴き声を比較します。音量補正と区間ごとの照合を行います。判定方法は試験版で、閾値は未校正です。比較距離は確率や一致率ではなく、小さいほど基準音に近い値です。必ず正解するわけではありません。ゲームセンターでは端末をスピーカーに近づけ、鳴き声の前後の雑音をなるべく減らしてください。</p>
 </div></main>
 <script>
 let ctx,refs=[],stream,processor,source,silentGain,recorded=[],recording=false,recordingStarted=0;
@@ -190,15 +190,78 @@ async function begin(){
     status.textContent='マイクを使用できません: '+e.message;
   }
 }
+function detectSegments(x){
+  const block=800, n=Math.ceil(x.length/block), levels=[];
+  for(let k=0;k<n;k++){
+    let sum=0,count=0;
+    for(let i=k*block;i<Math.min(x.length,(k+1)*block);i++){
+      sum+=x[i]*x[i];count++;
+    }
+    levels.push(Math.sqrt(sum/Math.max(1,count)));
+  }
+  const peak=Math.max(0,...levels);
+  if(peak<0.00008)return [];
+  const threshold=Math.max(peak*0.16,0.00006);
+  const active=levels.map(v=>v>=threshold);
+  // 0.2秒以下の小さな隙間をつなぐ
+  for(let i=1;i<active.length-2;i++){
+    if(active[i-1]&&active[i+2]){active[i]=true;active[i+1]=true}
+  }
+  const segments=[];let start=-1;
+  for(let i=0;i<=n;i++){
+    if(i<n&&active[i]&&start<0)start=i;
+    if(start>=0&&(i===n||!active[i])){
+      const from=Math.max(0,start*block-1200);
+      const to=Math.min(x.length,i*block+1200);
+      if(to-from>=0.32*8000)segments.push([from,to]);
+      start=-1;
+    }
+  }
+  return segments;
+}
+function normalizeAudio(x){
+  let peak=0;
+  for(const v of x)peak=Math.max(peak,Math.abs(v));
+  if(peak<0.00005)return x;
+  const gain=Math.min(120,0.75/peak);
+  const out=new Float32Array(x.length);
+  for(let i=0;i<x.length;i++)out[i]=x[i]*gain;
+  return out;
+}
 function compareSamples(all,sampleRate){
-  const fp=fingerprint(resample(all,sampleRate));
-  if(fp.length<8){status.textContent='鳴き声を十分に検出できませんでした';start.disabled=false;return}
-  status.textContent='比較しています…';
+  start.disabled=true;audioFile.disabled=true;
+  status.textContent='音声の区間を検出しています…';
   setTimeout(()=>{
     try{
-      const scores=refs.map(r=>({name:r.name,d:dtw(fp,r.fp)})).sort((a,b)=>a.d-b.d);
+      const x=normalizeAudio(resample(all,sampleRate));
+      const ranges=detectSegments(x);
+      const windows=[];
+      if(x.length<=3.0*8000)windows.push([0,x.length]);
+      for(const [a,b] of ranges){
+        const duration=(b-a)/8000;
+        if(duration<=3.0){windows.push([a,b]);continue}
+        // 長い区間は重複する短い窓で検査
+        for(const seconds of [1.2,1.8,2.4]){
+          const size=Math.round(seconds*8000),step=Math.round(0.45*8000);
+          for(let pos=a;pos+size<=b;pos+=step)windows.push([pos,pos+size]);
+        }
+      }
+      if(!windows.length)throw new Error('鳴き声に相当する区間が見つかりませんでした');
+      const candidates=windows.slice(0,65);
+      const best=new Map();
+      for(const [a,b] of candidates){
+        const fp=fingerprint(x.slice(a,b));
+        if(fp.length<8)continue;
+        for(const r of refs){
+          const d=dtw(fp,r.fp);
+          const old=best.get(r.name);
+          if(!old||d<old.d)best.set(r.name,{name:r.name,d,from:a/8000,to:b/8000});
+        }
+      }
+      const scores=[...best.values()].sort((a,b)=>a.d-b.d);
+      if(!scores.length)throw new Error('比較できる音声がありません');
       draw(scores.slice(0,3));
-      status.textContent='判定完了';
+      status.textContent='判定完了（'+candidates.length+'区間を比較）';
     }catch(e){status.textContent='判定エラー: '+e.message}
     finally{start.disabled=false;audioFile.disabled=false}
   },50);
@@ -239,7 +302,7 @@ function draw(s){
   }
   const gap=s.length>1?s[1].d-s[0].d:0;
   const uncertain=gap<0.035 || s[0].d>0.65;
-  result.innerHTML=`<div class="winner"><div>最も近い鳴き声（暫定）</div><div class="name">${s[0].name}</div><div class="score">比較距離 ${s[0].d.toFixed(4)}</div><div class="small">${uncertain?'判定が不確かです。音声を確認するか再録音してください。':'最も近い基準音です。正解を保証するものではありません。'}</div></div>`+
+  result.innerHTML=`<div class="winner"><div>最も近い鳴き声（暫定）</div><div class="name">${s[0].name}</div><div class="score">比較距離 ${s[0].d.toFixed(4)}</div><div class="small">検出区間 ${s[0].from.toFixed(2)}〜${s[0].to.toFixed(2)}秒</div><div class="small">${uncertain?'判定が不確かです。音声を確認するか再録音してください。':'最も近い基準音です。正解を保証するものではありません。'}</div></div>`+
     s.map((x,i)=>`<div class="row"><b>${i+1}位 ${x.name}</b>　比較距離 ${x.d.toFixed(4)}</div>`).join('');
 }
 start.onclick=begin;
