@@ -4,7 +4,7 @@
 
 v8.6の全HTML/JavaScript、manifest、README、references.jsonの構造と13件の内容、および内蔵MP3のデコード結果を確認した。アプリが実際に使っているのは `EMBEDDED` の13本のMP3で、`references.json` は読み込まれていない。READMEの「数値特徴のみ」は現状と一致していない（既存のREADME編集を保護するため、このPRでは変更しない）。内蔵基準は動画から推定区間を切り出したものと記載され、正解ラベル・鳴き声区間を人が確認する必要がある。
 
-手元に独立したiPhoneマイク録音や登録サンプルJSONはない。ユーザーから、iCloud Driveに鳴き声サイトをiPhoneで画面録画したデータがあると回答を得た。画面録画は基準の区間・ラベル確認に有用だが、デジタル音声の画面録画だけでは、スピーカー→室内→iPhoneマイクの変化を評価できない。録音元は https://pokearcade.jp/エクストレジャー2弾-鳴き声/ 、使用端末はiPhone 16 Pro、画面録画のマイクはオンとの回答を得た。サイトへの接続は環境のネットワーク制限で403となり、音源構成は未確認。マイクオンの画面録画には内部音声とマイク音声が混ざる可能性があり、元ファイルを確認する必要がある。共有されたファイルは別途検証する。内蔵音声の自己照合結果を実録音の判定精度として扱わない。
+手元に独立したiPhoneマイク録音や登録サンプルJSONはない。ユーザーから、iCloud Driveに鳴き声サイトをiPhoneで画面録画したデータがあると回答を得た。画面録画は基準の区間・ラベル確認に有用だが、デジタル音声の画面録画だけでは、スピーカー→室内→iPhoneマイクの変化を評価できない。録音元は https://pokearcade.jp/エクストレジャー2弾-鳴き声/ 、使用端末はiPhone 16 Pro、画面録画のマイクはオンとの回答を得た。サイトへの接続は当初ネットワーク制限で403だったが、必要ドメインの追加後に接続を再確認し、13匹それぞれのMP3を確認できた。マイクオンの画面録画には内部音声とマイク音声が混ざる可能性があり、元ファイルを確認する必要がある。共有されたファイルは別途検証する。内蔵音声の自己照合結果を実録音の判定精度として扱わない。
 
 ## 現行方式の問題
 
@@ -36,7 +36,7 @@ Node.js、Python 3、Chromiumを使用。ブラウザテストにはplaywright-c
 ```sh
 npm install --prefix /tmp/frienda-eval --cache /tmp/frienda-npm-cache --no-audit --no-fund --save-exact playwright-core@1.58.2
 export NODE_PATH=/tmp/frienda-eval/node_modules
-node --test tests/audio.test.cjs
+node --test tests/*.test.cjs
 node tools/audio-evaluate.cjs '' /tmp/audio-report.json
 ```
 
@@ -63,6 +63,16 @@ node tests/browser-recording.cjs
 | 同1秒、音量0.1倍 | 13/13 | 13/13 |
 | 同1秒、再生速度1.1倍 | 13/13 | 11/13 |
 | 同1秒、人工白色雑音10 dB | 13/13 | 12/13 |
+| ユーザー提示サイトの13本のMP3全体 | 11/13（2件照合不成立） | 13/13 |
+
+サイトの直接音源は `docs/audio-source.json` に記録した。内蔵音源とバイト単位では異なるが、同じ元の鳴き声を使っている可能性があり、独立したマイク録音の精度には数えない。現行方式の不成立はゲンガーとラプラス。アルセウスは直接音源では正しく判定できた（指標0.917）。iPhoneでのアルセウス→マーシャドー誤判定は、元の誤判定録音を受け取るまで再現できていない。原音ファイルはリポジトリに追加せず、ローカルでのみ評価した。
+
+```sh
+python3 tools/fetch-source.py /tmp/frienda-source
+AUDIO_SKIP_EMBEDDED=1 node tools/audio-evaluate.cjs /tmp/frienda-source/manifest.json /tmp/source-report.json
+```
+
+`source-comparison` のmanifestは結果を `source-direct` として記録し、独立テスト件数に加えない。公開サイトの取得内容は変化し得るので、manifestの各ファイルのSHA-256も確認する。
 
 この検証では末尾探索修正による13種の順位変化は見られなかった。独立した回帰テストでは末尾に置いた完全一致のスコアが修正前0.218→修正後1.000となった。これは探索漏れの修正を示し、実録音の精度改善とは別である。長い登録区間の無通知切り捨ても、修正前のテスト失敗から修正後の成功を確認した。
 
