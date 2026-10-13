@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>フレンダ鳴き声判定 v8.3</title>
+<title>フレンダ鳴き声判定 v8.4</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f5f5f7;color:#171717;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif}
 main{max-width:620px;margin:auto;padding:20px 14px 60px}.card{background:white;border-radius:24px;padding:22px;box-shadow:0 5px 28px #0001}
@@ -14,7 +14,7 @@ label{font-size:14px;font-weight:600}#status{text-align:center;color:#555;margin
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.hidden{display:none}
 audio{width:100%;margin-top:8px}.danger{color:#9d3327}
 </style></head><body><main><div class="card">
-<h1>🎙️ フレンダ鳴き声判定</h1><div class="sub">v8.3 全体パターン照合・13匹のMP3内蔵</div>
+<h1>🎙️ フレンダ鳴き声判定</h1><div class="sub">v8.4 基準MP3の一致時刻を診断・13匹のMP3内蔵</div>
 <div id="ready" class="small" style="text-align:center">基準MP3を準備中…</div>
 <button class="primary" id="start" disabled>🎤 判定スタート</button><button id="stop" disabled>停止して判定</button>
 <label for="file">または録音ファイルを選択</label><input id="file" type="file" accept="audio/*,.m4a,.mp3,.wav">
@@ -48,13 +48,13 @@ function features(samples,rate){const x=resample(samples,rate),out=[];const re=n
 for(let pos=0;pos+fftSize<=x.length;pos+=hop){let rms=0;for(let j=0;j<fftSize;j++){const v=x[pos+j];rms+=v*v;re[j]=v*(.5-.5*Math.cos(2*Math.PI*j/(fftSize-1)));im[j]=0}rms=Math.sqrt(rms/fftSize);fft(re,im);const f=new Float32Array(bands);let avg=0;for(let b=0;b<bands;b++){let power=0;const from=Math.max(1,edges[b]),to=Math.max(from+1,edges[b+1]);for(let k=from;k<to;k++)power+=re[k]*re[k]+im[k]*im[k];f[b]=Math.log(1+power/Math.max(1,to-from));avg+=f[b]}avg/=bands;let norm=0;for(let b=0;b<bands;b++){f[b]-=avg;norm+=f[b]*f[b]}norm=Math.sqrt(norm)||1;for(let b=0;b<bands;b++)f[b]/=norm;out.push({f,rms})}return out}
 function sim(a,b){let dot=0;for(let i=0;i<bands;i++)dot+=a[i]*b[i];return dot}
 function align(query,reference){
-  // v8.3: 入力区間のほぼ全体を使い、順序を保った全長照合を行う。
+  // v8.4: 入力区間のほぼ全体を使い、順序を保った全長照合を行う。
   // 参照側も複数の長さ・位置を試すが、短い断片だけでは評価しない。
   const n=query.length,m=reference.length;
   if(n<18||m<18)return null;
   const qmax=Math.min(n,Math.round(3.0*targetRate/hop));
   const starts=n<=qmax?[0]:Array.from({length:Math.ceil((n-qmax)/15)+1},(_,i)=>Math.min(n-qmax,i*15));
-  let best={score:-2,from:0,to:0};
+  let best={score:-2,from:0,to:0,refFrom:0,refTo:0,scale:1};
   for(const start of starts){
     const q=query.slice(start,start+qmax),qn=q.length;
     const energies=q.map(x=>x.rms).sort((a,b)=>a-b);
@@ -82,7 +82,7 @@ function align(query,reference){
         // 一部の区間だけが似るケースを抑制する
         const weak=Math.min(...sectionScores);
         const score=.55*overall+.45*weak-.035*Math.abs(Math.log(scale));
-        if(score>best.score)best={score,from:start*hop/targetRate,to:(start+qn)*hop/targetRate};
+        if(score>best.score)best={score,from:start*hop/targetRate,to:(start+qn)*hop/targetRate,refFrom:rs*hop/targetRate,refTo:(rs+span)*hop/targetRate,scale};
       }
     }
   }
@@ -93,10 +93,18 @@ async function compare(samples,rate,offset=0,manual=false){const run=++runCount;
 try{const q=features(samples,rate);if(q.length<18)throw Error('音声が短すぎます（約0.7秒以上必要）');
 const scores=[];for(const [name,ref] of refs){const match=align(q,ref.features);if(match)scores.push({name,...match})}
 scores.sort((a,b)=>b.score-a.score);if(!scores.length)throw Error('照合できませんでした。音量や録音区間を確認してください');
-const top=scores[0];$('results').classList.remove('hidden');$('results').innerHTML=`<div class="winner"><div style="font-size:13px;font-weight:700;color:#2563eb;margin-bottom:8px">${sourceLabel} #${run} / 使用区間 ${inputRange}</div><div>最も近い鳴き声（暫定）</div><strong>${top.name}</strong><div>類似指標 ${top.score.toFixed(3)}</div><div class="small">検出区間 ${(top.from+offset).toFixed(2)}〜${(top.to+offset).toFixed(2)}秒</div><div class="small danger">試験版のため、正解は保証できません</div></div>`+scores.slice(0,5).map((x,i)=>`<div class="item"><b>${i+1}位 ${x.name}</b><span>${x.score.toFixed(3)}</span></div>`).join('');
-$('status').textContent=`${sourceLabel} #${run} 完了（${scores.length}匹と比較・v8.3）`;if(manual)$('clipMessage').textContent=`手動再判定 #${run} 完了：${inputRange}を照合しました`; 
+const top=scores[0];$('results').classList.remove('hidden');$('results').innerHTML=`<div class="winner"><div style="font-size:13px;font-weight:700;color:#2563eb;margin-bottom:8px">${sourceLabel} #${run} / 使用区間 ${inputRange}</div><div>最も近い鳴き声（暫定）</div><strong>${top.name}</strong><div>類似指標 ${top.score.toFixed(3)}</div><div class="small">検出区間 ${(top.from+offset).toFixed(2)}〜${(top.to+offset).toFixed(2)}秒</div><div class="small danger">試験版のため、正解は保証できません</div></div>`+scores.slice(0,5).map((x,i)=>`<div style="border-bottom:1px solid #eee;padding:12px 4px"><div class="item" style="border:0;padding:0"><b>${i+1}位 ${x.name}</b><span>${x.score.toFixed(3)}</span></div><div class="small">基準MP3の一致区間 ${x.refFrom.toFixed(2)}〜${x.refTo.toFixed(2)}秒（速度倍率 ${x.scale.toFixed(2)}）</div><button type="button" data-refname="${x.name}" data-from="${x.refFrom}" data-to="${x.refTo}" style="font-size:13px;padding:9px">▶ この基準MP3の一致部分を再生</button></div>`).join('');
+$('results').querySelectorAll('button[data-refname]').forEach(btn=>btn.onclick=()=>playMatchedReference(btn.dataset.refname,Number(btn.dataset.from),Number(btn.dataset.to)));
+$('status').textContent=`${sourceLabel} #${run} 完了（${scores.length}匹と比較・v8.4）`;if(manual)$('clipMessage').textContent=`手動再判定 #${run} 完了：${inputRange}を照合しました`; 
 if(!manual){$('clipStart').value=(top.from+offset).toFixed(2);$('clipEnd').value=(top.to+offset).toFixed(2)}
 }catch(e){$('status').textContent='判定エラー: '+e.message}finally{setBusy(false)}}
+let refStopAt=Infinity;
+function playMatchedReference(name,from,to){
+ const sel=$('refSelect'),player=$('refPlayer');sel.value=name;sel.onchange();
+ refStopAt=to;player.ontimeupdate=()=>{if(player.currentTime>=refStopAt){player.pause();player.ontimeupdate=null;refStopAt=Infinity}};
+ const seek=()=>{player.currentTime=from;player.play().catch(e=>{$('status').textContent='再生エラー: '+e.message})};
+ if(player.readyState>=1)seek();else player.addEventListener('loadedmetadata',seek,{once:true});
+}
 function store(samples,rate){lastSamples=samples;lastRate=rate;$('clip').classList.remove('hidden');$('clipStart').max=(samples.length/rate).toFixed(2);$('clipEnd').max=(samples.length/rate).toFixed(2);$('clipStart').value='0';$('clipEnd').value=Math.min(2,samples.length/rate).toFixed(2)}
 function selected(){if(!lastSamples)throw Error('先に音声を読み込んでください');const a=Number($('clipStart').value),b=Number($('clipEnd').value),total=lastSamples.length/lastRate;if(!Number.isFinite(a)||!Number.isFinite(b)||a<0||b>total+.01||b-a<.7)throw Error('0.7秒以上の区間を録音範囲内で指定してください');return {a,b,x:lastSamples.slice(Math.round(a*lastRate),Math.round(b*lastRate))}}
 $('judgeClip').onclick=async()=>{try{const {a,b,x}=selected();$('clipMessage').textContent=`${a.toFixed(2)}〜${b.toFixed(2)}秒を再判定しています…`;await compare(x,lastRate,a,true)}catch(e){$('clipMessage').textContent='再判定できません：'+e.message}};
