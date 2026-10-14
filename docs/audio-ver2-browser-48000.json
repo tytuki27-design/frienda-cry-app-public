@@ -1,0 +1,29 @@
+{
+  "note": "Application functional validation on development recordings; not independent accuracy or Safari hardware validation.",
+  "purpose": "development",
+  "mode": "segmented",
+  "decodedSampleRate": 48000,
+  "correct": 2,
+  "total": 3,
+  "uncertain": 2,
+  "rows": [
+    {
+      "id": "microphone-ver2-マーシャドー",
+      "name": "マーシャドー",
+      "prediction": "マーシャドー",
+      "uncertain": false
+    },
+    {
+      "id": "microphone-ver2-ヒスイゾロアーク",
+      "name": "ヒスイゾロアーク",
+      "prediction": "ヒスイゾロアーク",
+      "uncertain": true
+    },
+    {
+      "id": "microphone-ver2-ラプラス",
+      "name": "ラプラス",
+      "prediction": "ルカリオ",
+      "uncertain": true
+    }
+  ]
+}

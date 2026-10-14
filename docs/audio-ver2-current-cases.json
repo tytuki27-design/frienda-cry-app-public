@@ -1,0 +1,480 @@
+{
+  "warning": "Embedded and synthetic cases reuse reference audio: regression/robustness only, not independent accuracy. Full-recording MFCC-DTW variants are evaluation-only; segmented centered MFCC-DTW is an opt-in application trial. Development recordings used to choose methods are not held-out accuracy tests.",
+  "heldOutCount": 0,
+  "perPokemon": [
+    {
+      "name": "ゲンガー",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0,
+      "mfccCmnCorrect": 0,
+      "segmentedCorrect": 0
+    },
+    {
+      "name": "シャンデラ",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0,
+      "mfccCmnCorrect": 0,
+      "segmentedCorrect": 0
+    },
+    {
+      "name": "マーシャドー",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0,
+      "mfccCmnCorrect": 0,
+      "segmentedCorrect": 0
+    },
+    {
+      "name": "アルセウス",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0,
+      "mfccCmnCorrect": 0,
+      "segmentedCorrect": 0
+    },
+    {
+      "name": "ディアルガ",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0,
+      "mfccCmnCorrect": 0,
+      "segmentedCorrect": 0
+    },
+    {
+      "name": "パルキア",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0,
+      "mfccCmnCorrect": 0,
+      "segmentedCorrect": 0
+    },
+    {
+      "name": "ラプラス",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0,
+      "mfccCmnCorrect": 0,
+      "segmentedCorrect": 0
+    },
+    {
+      "name": "メルメタル",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0,
+      "mfccCmnCorrect": 0,
+      "segmentedCorrect": 0
+    },
+    {
+      "name": "ルカリオ",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0,
+      "mfccCmnCorrect": 0,
+      "segmentedCorrect": 0
+    },
+    {
+      "name": "ガブリアス",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0,
+      "mfccCmnCorrect": 0,
+      "segmentedCorrect": 0
+    },
+    {
+      "name": "ヌメルゴン",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0,
+      "mfccCmnCorrect": 0,
+      "segmentedCorrect": 0
+    },
+    {
+      "name": "ヒスイゾロアーク",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0,
+      "mfccCmnCorrect": 0,
+      "segmentedCorrect": 0
+    },
+    {
+      "name": "サザンドラ",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0,
+      "mfccCmnCorrect": 0,
+      "segmentedCorrect": 0
+    }
+  ],
+  "confusion": [],
+  "summary": [
+    {
+      "kind": "development-recording",
+      "total": 3,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0,
+      "mfccCmnCorrect": 0,
+      "segmentedCorrect": 2,
+      "legacyRejected": 0,
+      "mfccRejected": 0,
+      "mfccCmnRejected": 0,
+      "segmentedRejected": 0
+    }
+  ],
+  "rows": [
+    {
+      "id": "microphone-ver2-マーシャドー",
+      "name": "マーシャドー",
+      "kind": "development-recording",
+      "decodedSampleRate": 44100,
+      "audioSha256": "db1f1b106c5b11e975590fc814af72fceb39ccf9956d3558d4a47467c39f818c",
+      "legacyTop5": [
+        {
+          "name": "ヌメルゴン",
+          "score": 0.37464369719858126
+        },
+        {
+          "name": "サザンドラ",
+          "score": 0.2755212318850892
+        },
+        {
+          "name": "マーシャドー",
+          "score": 0.201583332356412
+        },
+        {
+          "name": "ガブリアス",
+          "score": 0.14839095775906258
+        },
+        {
+          "name": "アルセウス",
+          "score": 0.13011193487495137
+        }
+      ],
+      "mfccTop5": [
+        {
+          "name": "アルセウス",
+          "score": 0.9064520423280228
+        },
+        {
+          "name": "マーシャドー",
+          "score": 0.9028503741416097
+        },
+        {
+          "name": "パルキア",
+          "score": 0.8980916383697187
+        },
+        {
+          "name": "ヌメルゴン",
+          "score": 0.8972895169422248
+        },
+        {
+          "name": "サザンドラ",
+          "score": 0.8945930144973061
+        }
+      ],
+      "mfccCmnTop5": [
+        {
+          "name": "アルセウス",
+          "score": 0.6200888962648243
+        },
+        {
+          "name": "サザンドラ",
+          "score": 0.6175504501849078
+        },
+        {
+          "name": "ヌメルゴン",
+          "score": 0.6092726797286371
+        },
+        {
+          "name": "ディアルガ",
+          "score": 0.6091616447000918
+        },
+        {
+          "name": "ヒスイゾロアーク",
+          "score": 0.6083438624797268
+        }
+      ],
+      "segmentedTop5": [
+        {
+          "name": "マーシャドー",
+          "score": 0.6071799723986763
+        },
+        {
+          "name": "アルセウス",
+          "score": 0.5581853938378765
+        },
+        {
+          "name": "ヌメルゴン",
+          "score": 0.5484438590161801
+        },
+        {
+          "name": "ガブリアス",
+          "score": 0.5456319287512154
+        },
+        {
+          "name": "ラプラス",
+          "score": 0.5386064704384227
+        }
+      ],
+      "segmented": "マーシャドー",
+      "segmentedScore": 0.6071799723986763,
+      "segmentedInterval": {
+        "from": 1.904,
+        "to": 3.4080000000000004
+      },
+      "segmentedMs": 380.9000000000233,
+      "duration": 5.566643990929705,
+      "legacy": "ヌメルゴン",
+      "legacyScore": 0.37464369719858126,
+      "mfcc": "アルセウス",
+      "mfccScore": 0.9064520423280228,
+      "mfccCmn": "アルセウス",
+      "mfccCmnScore": 0.6200888962648243,
+      "mfccCmnMs": 5044.299999999988,
+      "legacyMs": 752.0999999999767,
+      "mfccMs": 4873.700000000012,
+      "legacyMargin": 0.09912246531349206,
+      "mfccMargin": 0.003601668186413054,
+      "mfccCmnMargin": 0.00253844607991649
+    },
+    {
+      "id": "microphone-ver2-ヒスイゾロアーク",
+      "name": "ヒスイゾロアーク",
+      "kind": "development-recording",
+      "decodedSampleRate": 44100,
+      "audioSha256": "c7c6fb6b91e3ecaf6de10332d0375aff915419687cb1e256c499f18ecb15b8f1",
+      "legacyTop5": [
+        {
+          "name": "ヌメルゴン",
+          "score": 0.5628707536482476
+        },
+        {
+          "name": "サザンドラ",
+          "score": 0.5180774856470799
+        },
+        {
+          "name": "ガブリアス",
+          "score": 0.32270412652033886
+        },
+        {
+          "name": "メルメタル",
+          "score": 0.2659223898158485
+        },
+        {
+          "name": "アルセウス",
+          "score": 0.18482150061477304
+        }
+      ],
+      "mfccTop5": [
+        {
+          "name": "パルキア",
+          "score": 0.8312511214133725
+        },
+        {
+          "name": "シャンデラ",
+          "score": 0.8291359896739909
+        },
+        {
+          "name": "ヌメルゴン",
+          "score": 0.8182992064802476
+        },
+        {
+          "name": "サザンドラ",
+          "score": 0.8145746985381621
+        },
+        {
+          "name": "ヒスイゾロアーク",
+          "score": 0.8098613579586742
+        }
+      ],
+      "mfccCmnTop5": [
+        {
+          "name": "ガブリアス",
+          "score": 0.6938854086484354
+        },
+        {
+          "name": "シャンデラ",
+          "score": 0.6758259422820906
+        },
+        {
+          "name": "ヌメルゴン",
+          "score": 0.6628970377222829
+        },
+        {
+          "name": "サザンドラ",
+          "score": 0.655004434215803
+        },
+        {
+          "name": "アルセウス",
+          "score": 0.6466022742552038
+        }
+      ],
+      "segmentedTop5": [
+        {
+          "name": "ヒスイゾロアーク",
+          "score": 0.5650816690751232
+        },
+        {
+          "name": "サザンドラ",
+          "score": 0.5372613499458705
+        },
+        {
+          "name": "ガブリアス",
+          "score": 0.5346738938850994
+        },
+        {
+          "name": "メルメタル",
+          "score": 0.5317117643688899
+        },
+        {
+          "name": "ラプラス",
+          "score": 0.5264448233537233
+        }
+      ],
+      "segmented": "ヒスイゾロアーク",
+      "segmentedScore": 0.5650816690751232,
+      "segmentedInterval": {
+        "from": 5.072,
+        "to": 6.384
+      },
+      "segmentedMs": 153.70000000001164,
+      "duration": 10.089319727891157,
+      "legacy": "ヌメルゴン",
+      "legacyScore": 0.5628707536482476,
+      "mfcc": "パルキア",
+      "mfccScore": 0.8312511214133725,
+      "mfccCmn": "ガブリアス",
+      "mfccCmnScore": 0.6938854086484354,
+      "mfccCmnMs": 4548.899999999965,
+      "legacyMs": 453.5999999999767,
+      "mfccMs": 5554.300000000047,
+      "legacyMargin": 0.044793268001167674,
+      "mfccMargin": 0.002115131739381604,
+      "mfccCmnMargin": 0.018059466366344812
+    },
+    {
+      "id": "microphone-ver2-ラプラス",
+      "name": "ラプラス",
+      "kind": "development-recording",
+      "decodedSampleRate": 44100,
+      "audioSha256": "a5a9aece6c20fb1339edb0355376a93da4e417e664a2bb2be73a4f8bdb934b6f",
+      "legacyTop5": [
+        {
+          "name": "ヌメルゴン",
+          "score": 0.5521712364151382
+        },
+        {
+          "name": "サザンドラ",
+          "score": 0.5124454160979964
+        },
+        {
+          "name": "ガブリアス",
+          "score": 0.3003013501761404
+        },
+        {
+          "name": "メルメタル",
+          "score": 0.28154687078553176
+        },
+        {
+          "name": "アルセウス",
+          "score": 0.22373645452848578
+        }
+      ],
+      "mfccTop5": [
+        {
+          "name": "シャンデラ",
+          "score": 0.7970956662351723
+        },
+        {
+          "name": "パルキア",
+          "score": 0.7941306693769637
+        },
+        {
+          "name": "ディアルガ",
+          "score": 0.7891998532570815
+        },
+        {
+          "name": "ルカリオ",
+          "score": 0.784836474845475
+        },
+        {
+          "name": "サザンドラ",
+          "score": 0.7792667062379369
+        }
+      ],
+      "mfccCmnTop5": [
+        {
+          "name": "ヌメルゴン",
+          "score": 0.646245996080991
+        },
+        {
+          "name": "ヒスイゾロアーク",
+          "score": 0.6419387082532448
+        },
+        {
+          "name": "ガブリアス",
+          "score": 0.6261797506013022
+        },
+        {
+          "name": "ルカリオ",
+          "score": 0.6228712050141503
+        },
+        {
+          "name": "シャンデラ",
+          "score": 0.6204301194779654
+        }
+      ],
+      "segmentedTop5": [
+        {
+          "name": "ルカリオ",
+          "score": 0.5399992125355706
+        },
+        {
+          "name": "ラプラス",
+          "score": 0.5274524108972376
+        },
+        {
+          "name": "サザンドラ",
+          "score": 0.5215650522897489
+        },
+        {
+          "name": "ゲンガー",
+          "score": 0.5129082053528531
+        },
+        {
+          "name": "ヒスイゾロアーク",
+          "score": 0.5114747078692702
+        }
+      ],
+      "segmented": "ルカリオ",
+      "segmentedScore": 0.5399992125355706,
+      "segmentedInterval": {
+        "from": 3.888,
+        "to": 4.88
+      },
+      "segmentedMs": 316.20000000001164,
+      "duration": 8.830657596371882,
+      "legacy": "ヌメルゴン",
+      "legacyScore": 0.5521712364151382,
+      "mfcc": "シャンデラ",
+      "mfccScore": 0.7970956662351723,
+      "mfccCmn": "ヌメルゴン",
+      "mfccCmnScore": 0.646245996080991,
+      "mfccCmnMs": 6913.799999999988,
+      "legacyMs": 117.59999999997672,
+      "mfccMs": 3618.9000000000233,
+      "legacyMargin": 0.03972582031714178,
+      "mfccMargin": 0.002964996858208502,
+      "mfccCmnMargin": 0.004307287827746142
+    }
+  ],
+  "purpose": "development",
+  "audioContextSampleRate": 44100,
+  "skippedEmbedded": true,
+  "sourceSha256": "2798e8d2e2e7160b801ff41eb6f15553489b78673f28cf44516abd6b46db9a67",
+  "candidateSha256": "2fcbe310a68e954177dfc01a5e0533019b68a12ace82b0a1c32c8de6a98a37f2",
+  "externalManifestSha256": "2b5656a647a684f506c3cfb2302304712a493bd5c41a55b4f3febd3c4afe7d2e",
+  "generatedAt": "2026-10-14T03:07:57.582Z",
+  "commit": "88aff9c45bc284ec48704834c1c39aa64540e9f4"
+}

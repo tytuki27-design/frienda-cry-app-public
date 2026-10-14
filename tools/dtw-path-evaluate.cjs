@@ -25,24 +25,28 @@ function delta(raw){return raw.map((t,i)=>{const f=t.f.map((_,c)=>[1,2].reduce((
 for(const ref of data.references)for(const s of ref.segments)s.delta=delta(s.raw);
 for(const r of data.rows)for(const s of r.segments)s.delta=delta(s.raw);
 function dot(a,b){let sum=0;for(let i=0;i<a.length;i++)sum+=a[i]*b[i];return Math.max(-1,Math.min(1,sum))}
-function bounded(q,r,{penalty=.05,staticWeight=0,deltaWeight=0,limited=true}={}){
+function bounded(q,r,{penalty=.05,staticWeight=0,deltaWeight=0,limited=true,maxRepeat=2}={}){
  if(q.frames.length<20||r.frames.length<20)return null;
  let best=Infinity;const length=Math.min(300,q.frames.length),starts=[];for(let s=0;s<=q.frames.length-length;s+=50)starts.push(s);if(starts.at(-1)!==q.frames.length-length)starts.push(q.frames.length-length);
- for(const start of starts){const n=r.frames.length,states=limited?5:1;let prev=new Float64Array((n+1)*states).fill(Infinity);for(let j=0;j<=n;j++)prev[j*states]=0;
+ for(const start of starts){const n=r.frames.length,states=limited?1+2*maxRepeat:1;let prev=new Float64Array((n+1)*states).fill(Infinity);for(let j=0;j<=n;j++)prev[j*states]=0;
   for(let i=1;i<=length;i++){const now=new Float64Array((n+1)*states).fill(Infinity),qi=start+i-1;
    for(let j=1;j<=n;j++){const cost=1-((1-staticWeight-deltaWeight)*dot(q.frames[qi].f,r.frames[j-1].f)+staticWeight*dot(q.raw[qi].f,r.raw[j-1].f)+deltaWeight*dot(q.delta[qi],r.delta[j-1]));
     if(!limited){now[j]=Math.min(prev[j-1]+2*cost,prev[j]+cost+penalty,now[j-1]+cost+penalty);continue}
-    const b=j*5,a=(j-1)*5;now[b]=Math.min(prev[a],prev[a+1],prev[a+2],prev[a+3],prev[a+4])+2*cost;
-    now[b+1]=Math.min(prev[b],prev[b+3],prev[b+4])+cost+penalty;now[b+2]=prev[b+1]+cost+penalty;
-    now[b+3]=Math.min(now[a],now[a+1],now[a+2])+cost+penalty;now[b+4]=now[a+3]+cost+penalty;
+    const b=j*states,a=(j-1)*states;let diagonal=Infinity,vertical=prev[b],horizontal=now[a];
+    for(let state=0;state<states;state++)diagonal=Math.min(diagonal,prev[a+state]);
+    for(let run=1;run<=maxRepeat;run++){vertical=Math.min(vertical,prev[b+maxRepeat+run]);horizontal=Math.min(horizontal,now[a+run])}
+    now[b]=diagonal+2*cost;now[b+1]=vertical+cost+penalty;now[b+maxRepeat+1]=horizontal+cost+penalty;
+    for(let run=2;run<=maxRepeat;run++){now[b+run]=prev[b+run-1]+cost+penalty;now[b+maxRepeat+run]=now[a+maxRepeat+run-1]+cost+penalty;}
+
    }prev=now;
   }
   for(let j=1;j<=n;j++)for(let state=0;state<states;state++)best=Math.min(best,prev[j*states+state]/(2*length));
  }return Number.isFinite(best)?1-best:null;
 }
-const methods=[{name:'v87',score:(q,r)=>baseline(q.frames,r.frames)},{name:'penalty-0.2',score:(q,r)=>bounded(q,r,{penalty:.2,limited:false})},{name:'slope-2',score:(q,r)=>bounded(q,r)},{name:'slope-2-static-0.2',score:(q,r)=>bounded(q,r,{staticWeight:.2})},{name:'slope-2-delta-0.3',score:(q,r)=>bounded(q,r,{deltaWeight:.3})}];
-const rows=[];for(const row of data.rows){const q=row.segments.slice().sort((a,b)=>b.energy-a.energy)[0],rankings={};for(const method of methods){const rank=data.references.map(r=>({name:r.name,score:q?Math.max(...r.segments.map(s=>method.score(q,s)??-Infinity)):-Infinity})).filter(r=>Number.isFinite(r.score)).sort((a,b)=>b.score-a.score);rankings[method.name]=rank.slice(0,5)}rows.push({id:row.id,name:row.name,kind:row.kind,audioSha256:row.audioSha256,rankings});}
-const summary=methods.map(m=>({method:m.name,correct:rows.filter(r=>r.rankings[m.name][0]?.name===r.name).length,total:rows.length}));const hash=file=>require('node:crypto').createHash('sha256').update(fs.readFileSync(file)).digest('hex');const report={note:'Development method comparison, not independent accuracy. Embedded/synthetic inputs reuse reference audio. New user microphone failures have not been supplied for validation.',audioContextSampleRate:await page.evaluate(()=>audioContext().sampleRate),sourceSha256:hash(appHtml),candidateSha256:hash(path.join(root,'tools/mfcc-dtw.js')),evaluatorSha256:hash(__filename),commit:require('node:child_process').execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),generatedAt:new Date().toISOString(),summary,rows};fs.writeFileSync(process.argv[3]||'/tmp/frienda-path-report.json',JSON.stringify(report,null,2)+'\n');console.log(summary);
+const methods=[{name:'v87',score:(q,r)=>baseline(q.frames,r.frames)},{name:'penalty-0.2',score:(q,r)=>bounded(q,r,{penalty:.2,limited:false})},{name:'slope-2',score:(q,r)=>bounded(q,r)},{name:'slope-2-penalty-0.2',score:(q,r)=>bounded(q,r,{penalty:.2})},{name:'slope-3-penalty-0.2',score:(q,r)=>bounded(q,r,{penalty:.2,maxRepeat:3})},{name:'slope-2-static-0.2',score:(q,r)=>bounded(q,r,{staticWeight:.2})},{name:'slope-2-delta-0.3',score:(q,r)=>bounded(q,r,{deltaWeight:.3})}];
+const selection=process.env.DTW_METHODS?.split(',');if(selection?.some(name=>!methods.some(m=>m.name===name)))throw Error('Unknown DTW method');const selectedMethods=selection?methods.filter(m=>selection.includes(m.name)):methods;
+const rows=[];for(const row of data.rows){const q=row.segments.slice().sort((a,b)=>b.energy-a.energy)[0],rankings={};for(const method of selectedMethods){const rank=data.references.map(r=>({name:r.name,score:q?Math.max(...r.segments.map(s=>method.score(q,s)??-Infinity)):-Infinity})).filter(r=>Number.isFinite(r.score)).sort((a,b)=>b.score-a.score);rankings[method.name]=rank.slice(0,5)}rows.push({id:row.id,name:row.name,kind:row.kind,audioSha256:row.audioSha256,rankings});}
+const summary=selectedMethods.map(m=>({method:m.name,correct:rows.filter(r=>r.rankings[m.name][0]?.name===r.name).length,total:rows.length}));const hash=file=>require('node:crypto').createHash('sha256').update(fs.readFileSync(file)).digest('hex');const report={note:'Development method comparison, not independent accuracy. Embedded/synthetic inputs reuse reference audio. Recordings used to select these methods are development data; a new file alone does not establish an independent session.',audioContextSampleRate:await page.evaluate(()=>audioContext().sampleRate),sourceSha256:hash(appHtml),candidateSha256:hash(path.join(root,'tools/mfcc-dtw.js')),evaluatorSha256:hash(__filename),commit:require('node:child_process').execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim(),generatedAt:new Date().toISOString(),summary,rows};fs.writeFileSync(process.argv[3]||'/tmp/frienda-path-report.json',JSON.stringify(report,null,2)+'\n');console.log(summary);
 
  }finally{if(browser)await browser.close();await new Promise(r=>server.close(r))}
 })().catch(e=>{console.error(e);process.exitCode=1});
