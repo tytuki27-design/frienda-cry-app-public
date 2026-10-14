@@ -1,0 +1,286 @@
+{
+  "warning": "Embedded and synthetic cases reuse reference audio: regression/robustness only, not independent accuracy. MFCC-DTW is experimental and is not used by the app.",
+  "heldOutCount": 0,
+  "perPokemon": [
+    {
+      "name": "ゲンガー",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0
+    },
+    {
+      "name": "シャンデラ",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0
+    },
+    {
+      "name": "マーシャドー",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0
+    },
+    {
+      "name": "アルセウス",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0
+    },
+    {
+      "name": "ディアルガ",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0
+    },
+    {
+      "name": "パルキア",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0
+    },
+    {
+      "name": "ラプラス",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0
+    },
+    {
+      "name": "メルメタル",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0
+    },
+    {
+      "name": "ルカリオ",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0
+    },
+    {
+      "name": "ガブリアス",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0
+    },
+    {
+      "name": "ヌメルゴン",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0
+    },
+    {
+      "name": "ヒスイゾロアーク",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0
+    },
+    {
+      "name": "サザンドラ",
+      "total": 0,
+      "legacyCorrect": 0,
+      "mfccCorrect": 0
+    }
+  ],
+  "confusion": [],
+  "summary": [
+    {
+      "kind": "source-direct",
+      "total": 13,
+      "legacyCorrect": 11,
+      "mfccCorrect": 13,
+      "legacyRejected": 2,
+      "mfccRejected": 0
+    }
+  ],
+  "rows": [
+    {
+      "id": "Gengar_4x.mp3",
+      "name": "ゲンガー",
+      "kind": "source-direct",
+      "duration": 5.807981859410431,
+      "legacy": null,
+      "legacyScore": null,
+      "mfcc": "ゲンガー",
+      "mfccScore": 0.9723779727060183,
+      "legacyMs": 5.099999999976717,
+      "mfccMs": 1229.2000000000698,
+      "legacyMargin": null,
+      "mfccMargin": 0.10576155775805796
+    },
+    {
+      "id": "Chandelure_4x.mp3",
+      "name": "シャンデラ",
+      "kind": "source-direct",
+      "duration": 10.380997732426303,
+      "legacy": "シャンデラ",
+      "legacyScore": 0.9660280756227442,
+      "mfcc": "シャンデラ",
+      "mfccScore": 0.9887288729851528,
+      "legacyMs": 183.19999999995343,
+      "mfccMs": 3121.0999999999767,
+      "legacyMargin": 0.7283372973958109,
+      "mfccMargin": 0.06550620995895395
+    },
+    {
+      "id": "Marshadow_4x.mp3",
+      "name": "マーシャドー",
+      "kind": "source-direct",
+      "duration": 10.164988662131519,
+      "legacy": "マーシャドー",
+      "legacyScore": 0.9701043298010297,
+      "mfcc": "マーシャドー",
+      "mfccScore": 0.9917458828221216,
+      "legacyMs": 60.40000000002328,
+      "mfccMs": 2660.5999999999767,
+      "legacyMargin": 0.8914191707863048,
+      "mfccMargin": 0.04322483165960167
+    },
+    {
+      "id": "Arceus_4x.mp3",
+      "name": "アルセウス",
+      "kind": "source-direct",
+      "duration": 7.908979591836735,
+      "legacy": "アルセウス",
+      "legacyScore": 0.91664939562928,
+      "mfcc": "アルセウス",
+      "mfccScore": 0.9822064992985566,
+      "legacyMs": 92.5,
+      "mfccMs": 1980.1999999999534,
+      "legacyMargin": 0.6438858745395426,
+      "mfccMargin": 0.09889346635965124
+    },
+    {
+      "id": "Dialga_x4.mp3",
+      "name": "ディアルガ",
+      "kind": "source-direct",
+      "duration": 8.615986394557822,
+      "legacy": "ディアルガ",
+      "legacyScore": 0.8815175402355309,
+      "mfcc": "ディアルガ",
+      "mfccScore": 0.9703448889168726,
+      "legacyMs": 61.40000000002328,
+      "mfccMs": 1979.4000000000233,
+      "legacyMargin": 0.5996808907426618,
+      "mfccMargin": 0.10117552880469427
+    },
+    {
+      "id": "Palkia_x4.mp3",
+      "name": "パルキア",
+      "kind": "source-direct",
+      "duration": 9.64798185941043,
+      "legacy": "パルキア",
+      "legacyScore": 0.7474421308193275,
+      "mfcc": "パルキア",
+      "mfccScore": 0.9686494980272835,
+      "legacyMs": 62.89999999990687,
+      "mfccMs": 2326.4000000000233,
+      "legacyMargin": 0.4550307982023915,
+      "mfccMargin": 0.09723218097383046
+    },
+    {
+      "id": "Lapras_x4.mp3",
+      "name": "ラプラス",
+      "kind": "source-direct",
+      "duration": 7.583990929705215,
+      "legacy": null,
+      "legacyScore": null,
+      "mfcc": "ラプラス",
+      "mfccScore": 0.9769049560850984,
+      "legacyMs": 7.200000000069849,
+      "mfccMs": 1545.6999999999534,
+      "legacyMargin": null,
+      "mfccMargin": 0.054706665596161885
+    },
+    {
+      "id": "Melmetal_4x.mp3",
+      "name": "メルメタル",
+      "kind": "source-direct",
+      "duration": 5.594444444444444,
+      "legacy": "メルメタル",
+      "legacyScore": 0.8935867067673045,
+      "mfcc": "メルメタル",
+      "mfccScore": 0.9878563216009585,
+      "legacyMs": 44.699999999953434,
+      "mfccMs": 1143.5,
+      "legacyMargin": 0.6759296982337992,
+      "mfccMargin": 0.051031951609543325
+    },
+    {
+      "id": "Lucario_4x.mp3",
+      "name": "ルカリオ",
+      "kind": "source-direct",
+      "duration": 3.647981859410431,
+      "legacy": "ルカリオ",
+      "legacyScore": 0.979378045842396,
+      "mfcc": "ルカリオ",
+      "mfccScore": 0.9268757111184158,
+      "legacyMs": 16.600000000093132,
+      "mfccMs": 364.0999999999767,
+      "legacyMargin": 0.6447314508732481,
+      "mfccMargin": 0.13813969735191267
+    },
+    {
+      "id": "Garchomp_x4.mp3",
+      "name": "ガブリアス",
+      "kind": "source-direct",
+      "duration": 4.812993197278912,
+      "legacy": "ガブリアス",
+      "legacyScore": 0.985858811346269,
+      "mfcc": "ガブリアス",
+      "mfccScore": 0.9505216591735056,
+      "legacyMs": 29.099999999976717,
+      "mfccMs": 909.0999999999767,
+      "legacyMargin": 0.5200949644226474,
+      "mfccMargin": 0.11765270374683157
+    },
+    {
+      "id": "Goodra_4x.mp3",
+      "name": "ヌメルゴン",
+      "kind": "source-direct",
+      "duration": 6.2529931972789115,
+      "legacy": "ヌメルゴン",
+      "legacyScore": 0.9608194695185905,
+      "mfcc": "ヌメルゴン",
+      "mfccScore": 0.9769264287483417,
+      "legacyMs": 44.20000000006985,
+      "mfccMs": 1322.1999999999534,
+      "legacyMargin": 0.4932319590179831,
+      "mfccMargin": 0.07017965051341712
+    },
+    {
+      "id": "Hisuian-Zoroark_4x.mp3",
+      "name": "ヒスイゾロアーク",
+      "kind": "source-direct",
+      "duration": 7.020997732426304,
+      "legacy": "ヒスイゾロアーク",
+      "legacyScore": 0.7581981631425263,
+      "mfcc": "ヒスイゾロアーク",
+      "mfccScore": 0.9888364560055063,
+      "legacyMs": 51.300000000046566,
+      "mfccMs": 1522.9000000000233,
+      "legacyMargin": 0.5397836925038308,
+      "mfccMargin": 0.06412741343574302
+    },
+    {
+      "id": "Hydreigon_4x.mp3",
+      "name": "サザンドラ",
+      "kind": "source-direct",
+      "duration": 10.191995464852608,
+      "legacy": "サザンドラ",
+      "legacyScore": 0.847645965038162,
+      "mfcc": "サザンドラ",
+      "mfccScore": 0.9600680849175232,
+      "legacyMs": 96.69999999995343,
+      "mfccMs": 2560.9000000000233,
+      "legacyMargin": 0.37452944615647954,
+      "mfccMargin": 0.10964201213642322
+    }
+  ],
+  "purpose": "source-comparison",
+  "skippedEmbedded": true,
+  "sourceSha256": "6e7d0a316e52fecc48ac78e25744227b308f534c980e30f8d816918123ce4692",
+  "candidateSha256": "193af46453e673f0ee77a75d86c0e3d0d8b98faef349b0fa6211ec128c92885f",
+  "externalManifestSha256": "783b30bc1c3675948a42d084b467e054264a97263193fe35890782ff0e16ffa0",
+  "generatedAt": "2026-10-13T23:55:50.184Z",
+  "commit": "56242ede6a9f51ece9a4a471558640a22b66e334"
+}
