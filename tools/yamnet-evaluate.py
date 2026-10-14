@@ -15,6 +15,8 @@ import time
 
 MODEL_COMMIT = '34a21326906b9574fa11c4d6d0a5c534ff039267'
 MODEL_WEIGHTS_URL = 'https://storage.googleapis.com/audioset/yamnet.h5'
+# Verified against the official HTTPS artifact and publisher's size/MD5 metadata.
+WEIGHTS_SHA256 = '13c3308955bbfaef262f175ac9c40e47b134573a93984f009220dd7cc12a1744'
 SOURCE_HASHES = {
     'yamnet.py': '7ef3df32b7ecb782490b5a04d7581a23cfcf701dbf476bc4d03deefe22cdb040',
     'params.py': '925bb1e62461016031f98aea09aeac28975dd516f5747513767de5d1b06b6145',
@@ -31,6 +33,7 @@ def main():
     parser.add_argument('manifest', type=Path)
     parser.add_argument('--yamnet-dir', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--normalize-peak', action='store_true', help='Scale each reference and query to peak 0.95, without label-dependent choices')
     args = parser.parse_args()
     model_dir = args.yamnet_dir.resolve()
     weights = model_dir / 'yamnet.h5'
@@ -41,6 +44,8 @@ def main():
             raise ValueError(f'Official YAMNet source missing: {file}')
         if sha256((model_dir / file).read_bytes()) != SOURCE_HASHES[file]:
             raise ValueError(f'YAMNet source differs from pinned official commit: {file}')
+    if sha256(weights.read_bytes()) != WEIGHTS_SHA256:
+        raise ValueError('Pretrained weights differ from verified official YAMNet artifact')
     manifest = json.loads(args.manifest.read_text())
     # All current recordings were used to investigate methods: require the honest label.
     if manifest.get('purpose') != 'development' or not manifest.get('recordings'):
@@ -75,6 +80,11 @@ def main():
         waveform = np.frombuffer(pcm, dtype='<f4')
         if waveform.size == 0 or not np.isfinite(waveform).all():
             raise ValueError('Empty or nonfinite decoded audio')
+        if args.normalize_peak:
+            peak = np.max(np.abs(waveform))
+            if peak <= 1e-12:
+                raise ValueError('Silent audio cannot be peak-normalized')
+            waveform = waveform * (0.95 / peak)
         _, embeddings, _ = model(tf.convert_to_tensor(waveform))
         embeddings = embeddings.numpy()
         if embeddings.ndim != 2 or embeddings.shape[1] != 1024 or not np.isfinite(embeddings).all():
@@ -100,7 +110,7 @@ def main():
         rankings = {mode: sorted([{'name': name, 'score': float(np.dot(vector, references[name][mode]))} for name in references], key=lambda r: r['score'], reverse=True) for mode, vector in vectors.items()}
         rows.append({'id': item['id'], 'name': item['name'], 'audioSha256': sha256(audio), 'duration': duration, 'embeddingFrames': frames, 'processingMs': (time.perf_counter() - start) * 1000, 'rankings': {mode: ranking[:5] for mode, ranking in rankings.items()}})
     summary = {mode: {'correct': sum(row['rankings'][mode][0]['name'] == row['name'] for row in rows), 'total': len(rows)} for mode in ['mean', 'energy_weighted']}
-    report = {'status': 'development experiment; not independent accuracy or iPhone performance', 'model': 'official YAMNet, 1024-D embeddings; 521-class event head unused', 'sourceCommit': MODEL_COMMIT, 'sourceHashes': {name: sha256((model_dir / name).read_bytes()) for name in ['yamnet.py', 'params.py', 'features.py']}, 'weightsUrl': MODEL_WEIGHTS_URL, 'weightsSha256': sha256(weights.read_bytes()), 'tensorflowVersion': tf.__version__, 'inputSampleRate': 16000, 'summary': summary, 'rows': rows}
+    report = {'status': 'development experiment; not independent accuracy or iPhone performance', 'model': 'official YAMNet, 1024-D embeddings; 521-class event head unused', 'sourceCommit': MODEL_COMMIT, 'sourceHashes': {name: sha256((model_dir / name).read_bytes()) for name in ['yamnet.py', 'params.py', 'features.py']}, 'weightsUrl': MODEL_WEIGHTS_URL, 'weightsSha256': sha256(weights.read_bytes()), 'tensorflowVersion': tf.__version__, 'inputSampleRate': 16000, 'normalizePeak': args.normalize_peak, 'summary': summary, 'rows': rows}
     args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
     print(json.dumps(summary, indent=2))
 

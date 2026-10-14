@@ -1,4 +1,4 @@
-/* Experimental 8 kHz MFCC + subsequence DTW. No application ranking change.
+/* 8 kHz MFCC + subsequence DTW for evaluation and the opt-in application trial mode.
  * Uses the app's existing resample/fft helpers; evaluate before deployment. */
 const MfccDtw=(()=>{
  const rate=8000,size=256,windowSize=200,hopSize=80,filters=24,coefficients=13;
@@ -14,7 +14,7 @@ const MfccDtw=(()=>{
  const peak=out.reduce((peak,f)=>Math.max(peak,f.rms),0),threshold=Math.max(1e-5,peak*.08);let a=0,b=out.length;while(a<b&&out[a].rms<threshold)a++;while(b>a&&out[b-1].rms<threshold)b--;return out.slice(a,b);
  }
  function score(query,reference){
- if(query.length<20||reference.length<20)return null;
+ if(query.length<20||reference.length<20||!query.some(t=>t.f.some(v=>Math.abs(v)>1e-8))||!reference.some(t=>t.f.some(v=>Math.abs(v)>1e-8)))return null;
  // 3 s limit keeps this experiment bounded, matching the production query cap.
  let best=Infinity;const window=Math.min(300,query.length);const starts=[];for(let s=0;s<=query.length-window;s+=50)starts.push(s);if(starts.at(-1)!==query.length-window)starts.push(query.length-window);
  for(const start of starts){const q=query.slice(start,start+window);let previous=new Float64Array(reference.length+1); // Free reference-prefix skip (subsequence DTW).
@@ -22,6 +22,13 @@ const MfccDtw=(()=>{
  for(let j=1;j<previous.length;j++)best=Math.min(best,previous[j]/(2*q.length));
  }return Number.isFinite(best)?1-best:null;
  }
- function center(frames){if(!frames.length)return frames;const means=frames[0].f.map((_,i)=>frames.reduce((sum,t)=>sum+t.f[i],0)/frames.length);return frames.map(t=>{const f=t.f.map((v,i)=>v-means[i]),norm=Math.hypot(...f)||1;return {...t,f:f.map(v=>v/norm)}})}
- return {extract,score,center};
+ function center(frames){if(!frames.length)return frames;const means=frames[0].f.map((_,i)=>frames.reduce((sum,t)=>sum+t.f[i],0)/frames.length);return frames.map(t=>{const f=t.f.map((v,i)=>v-means[i]),norm=Math.hypot(...f);return {...t,f:norm>1e-8?f.map(v=>v/norm):f.map(()=>0)}})}
+ function segments(samples,sampleRate){
+ const frames=features(samples,sampleRate);if(!frames.length)return [];
+ const energies=frames.map(f=>f.rms).sort((a,b)=>a-b),peak=energies[energies.length-1],floor=energies[Math.floor(energies.length*.2)];
+ const threshold=Math.max(.00025,Math.min(floor*4,peak*.25),peak*.1),out=[];let start=null,end=0;
+ const emit=()=>{const from=Math.max(0,start*.032-.08),to=Math.min(samples.length/sampleRate,end*.032+.064+.08);if(to-from<.2)return;const x=samples.slice(Math.round(from*sampleRate),Math.round(to*sampleRate));let energy=0;for(const v of x)energy+=v*v;out.push({from,to,energy,frames:center(extract(x,sampleRate))})};
+ for(let i=0;i<frames.length;i++){if(frames[i].rms>=threshold){if(start===null)start=i;end=i}else if(start!==null&&i-end>6){emit();start=null}}if(start!==null)emit();return out.filter(s=>s.frames.length>=20&&s.frames.some(t=>t.f.some(v=>Math.abs(v)>1e-8)));
+ }
+ return {extract,score,center,segments};
 })();
