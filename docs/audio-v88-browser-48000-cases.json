@@ -1,0 +1,89 @@
+{
+  "note": "Application functional validation on development recordings; not independent accuracy or Safari hardware validation.",
+  "purpose": "development",
+  "mode": "segmented",
+  "decodedSampleRate": 48000,
+  "correct": 12,
+  "total": 13,
+  "uncertain": 4,
+  "rows": [
+    {
+      "id": "microphone-ゲンガー",
+      "name": "ゲンガー",
+      "prediction": "ゲンガー",
+      "uncertain": false
+    },
+    {
+      "id": "microphone-メルメタル",
+      "name": "メルメタル",
+      "prediction": "メルメタル",
+      "uncertain": false
+    },
+    {
+      "id": "microphone-アルセウス",
+      "name": "アルセウス",
+      "prediction": "アルセウス",
+      "uncertain": false
+    },
+    {
+      "id": "microphone-ヌメルゴン",
+      "name": "ヌメルゴン",
+      "prediction": "ヌメルゴン",
+      "uncertain": false
+    },
+    {
+      "id": "microphone-ヒスイゾロアーク",
+      "name": "ヒスイゾロアーク",
+      "prediction": "ヒスイゾロアーク",
+      "uncertain": true
+    },
+    {
+      "id": "microphone-ガブリアス",
+      "name": "ガブリアス",
+      "prediction": "ガブリアス",
+      "uncertain": true
+    },
+    {
+      "id": "microphone-ルカリオ",
+      "name": "ルカリオ",
+      "prediction": "ルカリオ",
+      "uncertain": false
+    },
+    {
+      "id": "microphone-パルキア",
+      "name": "パルキア",
+      "prediction": "パルキア",
+      "uncertain": false
+    },
+    {
+      "id": "microphone-サザンドラ",
+      "name": "サザンドラ",
+      "prediction": "サザンドラ",
+      "uncertain": false
+    },
+    {
+      "id": "microphone-ラプラス",
+      "name": "ラプラス",
+      "prediction": "ラプラス",
+      "uncertain": true
+    },
+    {
+      "id": "microphone-マーシャドー",
+      "name": "マーシャドー",
+      "prediction": "ディアルガ",
+      "uncertain": true
+    },
+    {
+      "id": "microphone-ディアルガ",
+      "name": "ディアルガ",
+      "prediction": "ディアルガ",
+      "uncertain": false
+    },
+    {
+      "id": "microphone-シャンデラ",
+      "name": "シャンデラ",
+      "prediction": "シャンデラ",
+      "uncertain": false
+    }
+  ]
+}

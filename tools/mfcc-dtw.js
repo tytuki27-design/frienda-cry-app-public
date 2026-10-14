@@ -13,12 +13,12 @@ const MfccDtw=(()=>{
  // Trim only leading/trailing low-energy frames; internal timing remains intact.
  const peak=out.reduce((peak,f)=>Math.max(peak,f.rms),0),threshold=Math.max(1e-5,peak*.08);let a=0,b=out.length;while(a<b&&out[a].rms<threshold)a++;while(b>a&&out[b-1].rms<threshold)b--;return out.slice(a,b);
  }
- function score(query,reference){
+ function score(query,reference,warpPenalty=.05){
  if(query.length<20||reference.length<20||!query.some(t=>t.f.some(v=>Math.abs(v)>1e-8))||!reference.some(t=>t.f.some(v=>Math.abs(v)>1e-8)))return null;
  // 3 s limit keeps this experiment bounded, matching the production query cap.
  let best=Infinity;const window=Math.min(300,query.length);const starts=[];for(let s=0;s<=query.length-window;s+=50)starts.push(s);if(starts.at(-1)!==query.length-window)starts.push(query.length-window);
  for(const start of starts){const q=query.slice(start,start+window);let previous=new Float64Array(reference.length+1); // Free reference-prefix skip (subsequence DTW).
- for(let i=1;i<=q.length;i++){const current=new Float64Array(reference.length+1).fill(Infinity);for(let j=1;j<=reference.length;j++){let dot=0;for(let c=0;c<coefficients;c++)dot+=q[i-1].f[c]*reference[j-1].f[c];const cost=1-Math.max(-1,Math.min(1,dot));current[j]=Math.min(previous[j-1]+2*cost,previous[j]+cost+.05,current[j-1]+cost+.05)}previous=current;}
+ for(let i=1;i<=q.length;i++){const current=new Float64Array(reference.length+1).fill(Infinity);for(let j=1;j<=reference.length;j++){let dot=0;for(let c=0;c<coefficients;c++)dot+=q[i-1].f[c]*reference[j-1].f[c];const cost=1-Math.max(-1,Math.min(1,dot));current[j]=Math.min(previous[j-1]+2*cost,previous[j]+cost+warpPenalty,current[j-1]+cost+warpPenalty)}previous=current;}
  for(let j=1;j<previous.length;j++)best=Math.min(best,previous[j]/(2*q.length));
  }return Number.isFinite(best)?1-best:null;
  }
