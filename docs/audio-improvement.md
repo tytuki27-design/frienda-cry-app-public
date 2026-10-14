@@ -177,3 +177,44 @@ node tools/audio-evaluate.cjs /path/to/manifest.json /tmp/held-out-report.json
 この5録音では現行方式1/5、MFCC＋DTW0/5、平均補正付き3/5。ルカリオを改善する一方、現行で正解していたヌメルゴンを補正付き方式が誤判定することを確認した。ゲンガーの誤判定も残る。平均補正を無条件に標準採用する根拠にはならない。異なる方式の指標を同じ尺度として比較したり、この件数を全13種の実使用精度として扱ったりしない。
 
 判定方式と閾値は今回変更していない。次に必要なのは残る8匹（マーシャドー、ディアルガ、パルキア、ラプラス、メルメタル、ガブリアス、ヒスイゾロアーク、サザンドラ）のマイク録音と、別セッションでの各クラスの繰り返し録音である。比較では録音条件の補正に加え、音色を表す静的特徴と時間変化を表す特徴の扱い、雑音区間の除外、DTWの経路制約を優先する。特定クラス専用の補正や、正解に合わせた区間選別は行わない。今回の原音もGitHubに追加していない。
+
+## 追加5匹を含む10録音の評価
+
+判定方式を変更せず、ディアルガ・パルキア・マーシャドー・メルメタル・ラプラスを追加して計10録音を比較した（`docs/audio-ten-microphone-cases.json`）。全録音は48 kHz・2チャンネル。各クラス1件、録音セッションの独立性は未確認で、開発用データである。
+
+| 追加録音の正解 | 現行方式 | MFCC＋DTW | 平均補正付きMFCC＋DTW |
+| --- | --- | --- | --- |
+| ディアルガ | ヌメルゴン | ディアルガ | ディアルガ |
+| パルキア | ヌメルゴン | パルキア | パルキア |
+| マーシャドー | ヌメルゴン | パルキア | アルセウス |
+| メルメタル | ヌメルゴン | サザンドラ | メルメタル |
+| ラプラス | ヌメルゴン | パルキア | ヒスイゾロアーク |
+
+10録音全体では現行方式1/10、MFCC＋DTW2/10、平均補正付き6/10。補正で正解したのはシャンデラ・アルセウス・ルカリオ・ディアルガ・パルキア・メルメタル。ゲンガー・マーシャドー・ラプラス・ヌメルゴンは誤判定が残る。アプリ標準方式は変更していない。残る初回録音はガブリアス・ヒスイゾロアーク・サザンドラの3匹で、全クラスの別セッションでの複数録音も必要である。
+
+## 学習済み音声AIの比較準備
+
+`tools/yamnet-evaluate.py` を追加した。公式YAMNetの1024次元埋め込みを抽出し、内蔵13本の埋め込みとのコサイン照合を比較する評価専用ツールである。521種の一般音声イベント分類出力をポケモンのラベルと見なすことはしない。13種の分類器の追加学習はまだ行っていない。16 kHz・モノラル化はFFmpegを使い、全フレームの平均と音声エネルギーによる重み付き平均の2方式を固定して比較する。期待ラベルで区間やパラメーターを変えない。
+
+公式ソース： https://github.com/tensorflow/models/tree/34a21326906b9574fa11c4d6d0a5c534ff039267/research/audioset/yamnet
+
+公式重み： https://storage.googleapis.com/audioset/yamnet.h5
+
+現在の検証状況：TensorFlow CPU 2.20.0とtf-keras 2.20.1をリポジトリ外に導入し、公式ソースから3,751,369パラメーター・1024次元出力のモデル構築を確認した。公式重みの取得はネットワークプロキシの403でブロックされ、学習済みモデルの推論・精度比較は未実施。ランダムな初期重みで判定結果を作ることはしない。評価CLIは重みがなければ失敗し、精度レポートを生成しない。`storage.googleapis.com` の追加を環境設定ドラフトに保存したが、それだけでは実行環境への適用を証明しない。
+
+再現手順（アプリの依存関係や保存データを変更しない）：
+
+```sh
+python3 -m pip install --target /workspace/shared/yamnet-python --cache-dir /tmp/frienda-pip-cache tensorflow-cpu==2.20.0
+# TensorFlow CPUが同じtensorflowモジュールを提供するため、tf-kerasから別のtensorflow配布を重複導入しない。
+python3 -m pip install --target /workspace/shared/yamnet-python --cache-dir /tmp/frienda-pip-cache --no-deps tf-keras==2.20.1
+mkdir -p /workspace/shared/yamnet-source
+for yamnet_source_file in yamnet.py params.py features.py; do
+  curl --fail --location "https://raw.githubusercontent.com/tensorflow/models/34a21326906b9574fa11c4d6d0a5c534ff039267/research/audioset/yamnet/${yamnet_source_file}" -o "/workspace/shared/yamnet-source/${yamnet_source_file}"
+done
+# 信頼できる公式HTTPS経路から yamnet.h5 を取得する。TLS検証を無効にしない。
+curl --fail --location https://storage.googleapis.com/audioset/yamnet.h5 -o /workspace/shared/yamnet-source/yamnet.h5
+PYTHONPATH=/workspace/shared/yamnet-python python3 tools/yamnet-evaluate.py /path/to/development-manifest.json --yamnet-dir /workspace/shared/yamnet-source --output /tmp/yamnet-report.json
+```
+
+manifestは既存評価ツールと同じ `purpose=development`、各録音の `id/name/file/split=test` を使う。このAI試作は録音全体のみを比較し、区間指定や外部学習テンプレートはまだ対応していない。公式モデルのソース・重みのSHA-256、入力ファイルのSHA-256、各方式の上位候補を記録する。元音声や埋め込みそのものはレポートに出力しない。iPhoneブラウザでの推論速度・メモリ・TF.js変換はまだ検証しておらず、このPython評価をアプリに組み込んだとは扱わない。
