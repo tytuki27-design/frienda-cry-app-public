@@ -22,5 +22,6 @@ const MfccDtw=(()=>{
  for(let j=1;j<previous.length;j++)best=Math.min(best,previous[j]/(2*q.length));
  }return Number.isFinite(best)?1-best:null;
  }
- return {extract,score};
+ function center(frames){if(!frames.length)return frames;const means=frames[0].f.map((_,i)=>frames.reduce((sum,t)=>sum+t.f[i],0)/frames.length);return frames.map(t=>{const f=t.f.map((v,i)=>v-means[i]),norm=Math.hypot(...f)||1;return {...t,f:f.map(v=>v/norm)}})}
+ return {extract,score,center};
 })();

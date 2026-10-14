@@ -1,0 +1,325 @@
+{
+  "status": "development case, not independent accuracy",
+  "expectedLabel": "アルセウス",
+  "inputSha256": "4a97f44e6c114e024d34c8c865b718ad99f69e4a9ba9c0300ad358be3c3288a4",
+  "containerSampleRate": 48000,
+  "containerChannels": 2,
+  "containerDurationSeconds": 7.404,
+  "decodedRate": 44100,
+  "decodedDuration": 7.358662131519274,
+  "channels": [
+    {
+      "rms": 0.012407008237062516,
+      "peak": 0.12430263310670853
+    },
+    {
+      "rms": 8.43972338163852e-07,
+      "peak": 9.31403337744996e-06
+    }
+  ],
+  "mono": {
+    "rms": 0.006203504124710997,
+    "peak": 0.06215131655335426
+  },
+  "legacyRanking": [
+    {
+      "name": "ヌメルゴン",
+      "base": 0.564638194997991,
+      "extra": null,
+      "score": 0.564638194997991,
+      "from": 3.84,
+      "to": 6.848
+    },
+    {
+      "name": "サザンドラ",
+      "base": 0.46563382702364303,
+      "extra": null,
+      "score": 0.46563382702364303,
+      "from": 4.288,
+      "to": 7.296
+    },
+    {
+      "name": "ガブリアス",
+      "base": 0.2967912229408161,
+      "extra": null,
+      "score": 0.2967912229408161,
+      "from": 4.288,
+      "to": 7.296
+    },
+    {
+      "name": "メルメタル",
+      "base": 0.2751992975530017,
+      "extra": null,
+      "score": 0.2751992975530017,
+      "from": 0,
+      "to": 3.008
+    },
+    {
+      "name": "アルセウス",
+      "base": 0.22173526855406694,
+      "extra": null,
+      "score": 0.22173526855406694,
+      "from": 0,
+      "to": 3.008
+    }
+  ],
+  "rmsRescaledRanking": [
+    {
+      "name": "ヌメルゴン",
+      "base": 0.5553778411923949,
+      "extra": null,
+      "score": 0.5553778411923949,
+      "from": 3.36,
+      "to": 6.368
+    },
+    {
+      "name": "サザンドラ",
+      "base": 0.4491944944115989,
+      "extra": null,
+      "score": 0.4491944944115989,
+      "from": 3.84,
+      "to": 6.848
+    },
+    {
+      "name": "メルメタル",
+      "base": 0.30473425064846826,
+      "extra": null,
+      "score": 0.30473425064846826,
+      "from": 0,
+      "to": 3.008
+    },
+    {
+      "name": "ガブリアス",
+      "base": 0.30303618138277866,
+      "extra": null,
+      "score": 0.30303618138277866,
+      "from": 0,
+      "to": 3.008
+    },
+    {
+      "name": "アルセウス",
+      "base": 0.2269812741630775,
+      "extra": 0.10493980838213393,
+      "score": 0.2269812741630775,
+      "from": 0,
+      "to": 3.008
+    }
+  ],
+  "mfccRanking": [
+    {
+      "name": "ディアルガ",
+      "score": 0.8046784128395699
+    },
+    {
+      "name": "パルキア",
+      "score": 0.8015395798045338
+    },
+    {
+      "name": "ルカリオ",
+      "score": 0.7922386638359353
+    },
+    {
+      "name": "サザンドラ",
+      "score": 0.7832678964167733
+    },
+    {
+      "name": "ヌメルゴン",
+      "score": 0.7775329535520333
+    }
+  ],
+  "decoded48000LegacyRanking": [
+    {
+      "name": "ヌメルゴン",
+      "base": 0.5625551818283518,
+      "extra": null,
+      "score": 0.5625551818283518,
+      "from": 3.84,
+      "to": 6.848
+    },
+    {
+      "name": "サザンドラ",
+      "base": 0.46516967504476986,
+      "extra": null,
+      "score": 0.46516967504476986,
+      "from": 4.288,
+      "to": 7.296
+    },
+    {
+      "name": "ガブリアス",
+      "base": 0.2961532413686106,
+      "extra": null,
+      "score": 0.2961532413686106,
+      "from": 4.288,
+      "to": 7.296
+    },
+    {
+      "name": "メルメタル",
+      "base": 0.27352715227527624,
+      "extra": null,
+      "score": 0.27352715227527624,
+      "from": 0,
+      "to": 3.008
+    },
+    {
+      "name": "アルセウス",
+      "base": 0.21952678885714477,
+      "extra": null,
+      "score": 0.21952678885714477,
+      "from": 0,
+      "to": 3.008
+    }
+  ],
+  "halfSecondStep1SecondWindows": [
+    {
+      "start": 0,
+      "rms": 0.008275135681174146,
+      "legacyTop": {
+        "name": "ゲンガー",
+        "base": null,
+        "extra": null,
+        "score": -2
+      }
+    },
+    {
+      "start": 0.5,
+      "rms": 0.001071395812412034,
+      "legacyTop": {
+        "name": "ヌメルゴン",
+        "base": 0.5717550965849838,
+        "extra": null,
+        "score": 0.5717550965849838,
+        "from": 0,
+        "to": 0.96
+      }
+    },
+    {
+      "start": 1,
+      "rms": 0.000547563735608195,
+      "legacyTop": {
+        "name": "ヌメルゴン",
+        "base": 0.5640868513964424,
+        "extra": null,
+        "score": 0.5640868513964424,
+        "from": 0,
+        "to": 0.96
+      }
+    },
+    {
+      "start": 1.5,
+      "rms": 0.0005358015364389892,
+      "legacyTop": {
+        "name": "ヌメルゴン",
+        "base": 0.589525118093567,
+        "extra": null,
+        "score": 0.589525118093567,
+        "from": 0,
+        "to": 0.96
+      }
+    },
+    {
+      "start": 2,
+      "rms": 0.006876137766418822,
+      "legacyTop": {
+        "name": "ヌメルゴン",
+        "base": 0.5746475038889597,
+        "extra": null,
+        "score": 0.5746475038889597,
+        "from": 0,
+        "to": 0.96
+      }
+    },
+    {
+      "start": 2.5,
+      "rms": 0.011153681217713754,
+      "legacyTop": {
+        "name": "ゲンガー",
+        "base": null,
+        "extra": null,
+        "score": -2
+      }
+    },
+    {
+      "start": 3,
+      "rms": 0.012615973132361256,
+      "legacyTop": {
+        "name": "パルキア",
+        "base": 0.6247581665699545,
+        "extra": null,
+        "score": 0.6247581665699545,
+        "from": 0,
+        "to": 0.96
+      }
+    },
+    {
+      "start": 3.5,
+      "rms": 0.009432060785783503,
+      "legacyTop": {
+        "name": "ゲンガー",
+        "base": null,
+        "extra": null,
+        "score": -2
+      }
+    },
+    {
+      "start": 4,
+      "rms": 0.0026901158342402184,
+      "legacyTop": {
+        "name": "ヌメルゴン",
+        "base": 0.6384462362643546,
+        "extra": null,
+        "score": 0.6384462362643546,
+        "from": 0,
+        "to": 0.96
+      }
+    },
+    {
+      "start": 4.5,
+      "rms": 0.0005822663641412165,
+      "legacyTop": {
+        "name": "ヌメルゴン",
+        "base": 0.5629364513782358,
+        "extra": null,
+        "score": 0.5629364513782358,
+        "from": 0,
+        "to": 0.96
+      }
+    },
+    {
+      "start": 5,
+      "rms": 0.0005577994952948406,
+      "legacyTop": {
+        "name": "ヌメルゴン",
+        "base": 0.5926526457320318,
+        "extra": null,
+        "score": 0.5926526457320318,
+        "from": 0,
+        "to": 0.96
+      }
+    },
+    {
+      "start": 5.5,
+      "rms": 0.0005517974003219635,
+      "legacyTop": {
+        "name": "ヌメルゴン",
+        "base": 0.5811907080277704,
+        "extra": null,
+        "score": 0.5811907080277704,
+        "from": 0,
+        "to": 0.96
+      }
+    },
+    {
+      "start": 6,
+      "rms": 0.000571506938575668,
+      "legacyTop": {
+        "name": "ヌメルゴン",
+        "base": 0.6069016163051634,
+        "extra": null,
+        "score": 0.6069016163051634,
+        "from": 0,
+        "to": 0.96
+      }
+    }
+  ],
+  "note": "When every candidate is rejected, a score of -2 is a diagnostic sentinel; the displayed first item is not a prediction. Uploaded audio and feature vectors are not included."
+}
