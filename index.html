@@ -29,7 +29,7 @@ audio{width:100%;margin-top:8px}.danger{color:#9d3327}
 <p class="small">録音ファイルを読み込み、鳴き声の開始・終了を指定してから、正しいポケモン名を選んで登録します。判定と同じファイルを登録するとそのファイルの結果は参考になりません。別に録音した音声で精度を確認してください。</p>
 <label for="trainName">正しいポケモン</label><select id="trainName" style="width:100%;font-size:16px;padding:12px;border-radius:10px"></select>
 <button id="addSample">＋ 現在の選択区間をサンプル登録</button>
-<div id="sampleStatus" class="small"></div><div id="sampleCounts" class="small"></div>
+<div id="sampleStatus" class="small"></div><div id="sampleCounts" class="small"></div><div id="sampleQuality" class="small" aria-live="polite"></div>
 <button id="exportSamples">登録サンプルをJSONで保存</button>
 <label for="importSamples">保存したサンプルを復元</label><input type="file" id="importSamples" accept=".json,application/json">
 <button id="clearSamples">登録サンプルを全削除</button>
@@ -47,9 +47,11 @@ let lastSamples=null,lastRate=0,playSource=null,runCount=0;
 const refs=new Map();
 const SAMPLE_KEY='frienda-v85-user-samples';
 let userSamples=[];
+const sampleQualityCache=new WeakMap();
+function sampleQuality(sample){if(!sampleQualityCache.has(sample))sampleQualityCache.set(sample,align(sample.frames,sample.frames)!==null);return sampleQualityCache.get(sample)}
 function loadSamples(){try{const a=JSON.parse(localStorage.getItem(SAMPLE_KEY)||'[]');userSamples=Array.isArray(a)?a.filter(validSample):[]}catch(e){userSamples=[]}updateSampleStatus()}
 function validSample(x){return x&&names.includes(x.name)&&Array.isArray(x.frames)&&x.frames.length>=18&&x.frames.length<=180&&x.frames.every(f=>Array.isArray(f.f)&&f.f.length===bands&&f.f.every(Number.isFinite)&&Number.isFinite(f.rms))}
-function updateSampleStatus(){const counts=names.map(n=>`${n} ${userSamples.filter(x=>x.name===n).length}件`);$('sampleStatus').textContent=`登録 ${userSamples.length}件（最大65件） / この端末のブラウザに保存されます。`;$('sampleCounts').textContent=counts.join('、')}
+function updateSampleStatus(){const counts=names.map(n=>`${n} ${userSamples.filter(x=>x.name===n).length}件`);$('sampleStatus').textContent=`登録 ${userSamples.length}件（最大65件） / この端末のブラウザに保存されます。`;$('sampleCounts').textContent=counts.join('、');const failed=userSamples.filter(s=>!sampleQuality(s));$('sampleQuality').textContent=`登録サンプルの自己照合：${userSamples.length}件中${failed.length}件が不成立`+(failed.length?`（${names.filter(n=>failed.some(s=>s.name===n)).map(n=>`${n} ${failed.filter(s=>s.name===n).length}件`).join('、')}）。同じ登録データにも一致しないサンプルがあります。鳴き声の区間を選び直すか、録音距離・音量を調整して再登録してください。判定精度の評価ではありません。`:'。同じ登録データとの照合チェックであり、別の録音の正解を保証しません。')}
 function storeSamples(){localStorage.setItem(SAMPLE_KEY,JSON.stringify(userSamples));updateSampleStatus()}
 function compactFrames(f){if(f.length>180)throw Error('選択区間が長すぎます。約5.8秒以下（180フレーム以内）に短くしてください');return f.map(x=>({f:Array.from(x.f,v=>Math.round(v*10000)/10000),rms:Math.round(x.rms*100000)/100000}))}
 function sampleMatch(q,frames){const m=align(q,frames);return m?{...m,source:'追加録音'}:null}
