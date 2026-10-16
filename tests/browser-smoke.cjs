@@ -4,7 +4,7 @@ const {chromium}=require('playwright-core');
  try {
  const page=await browser.newPage(); const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const response=await page.goto('http://127.0.0.1:8000');if(response.status()!==200)throw Error('HTTP failed');
- await page.waitForFunction(()=>document.querySelector('#ready').textContent==='基準MP3 13匹の準備完了',null,{timeout:60000});
+ await page.waitForFunction(()=>refs.size===names.length&&!document.querySelector('#start').disabled,null,{timeout:60000});
  console.log('Ready:',await page.locator('#ready').innerText());
  if(await page.locator('#start').isDisabled())throw Error('Start is disabled');
  const audio=await page.evaluate(async()=>{for(const name of names){const b=await decodeBuffer(bytes64(EMBEDDED[name]).buffer),x=mono(b);for(let t=0;t+1<b.duration;t+=.25){const clip=x.slice(Math.round(t*b.sampleRate),Math.round((t+1)*b.sampleRate));const m=align(features(clip,b.sampleRate),refs.get(name).features);if(m&&m.score>.9)return {name,rate:b.sampleRate,samples:Array.from(clip)};}}throw Error('No suitable reference clip')});
@@ -16,7 +16,7 @@ const {chromium}=require('playwright-core');
  await page.locator('#judgeClip').click();await page.waitForFunction(()=>document.querySelector('#clipMessage').textContent.includes('完了'),null,{timeout:60000});
  console.log('Manual:',await page.locator('#clipMessage').innerText());
  await page.locator('#addSample').click();if(!await page.locator('#sampleStatus').innerText().then(x=>x.includes('全1件')))throw Error('Sample registration failed');
- await page.reload();await page.waitForFunction(()=>document.querySelector('#ready').textContent==='基準MP3 13匹の準備完了');
+ await page.reload();await page.waitForFunction(()=>refs.size===names.length&&!document.querySelector('#start').disabled);
  if(!await page.locator('#sampleStatus').innerText().then(x=>x.includes('登録 1件')))throw Error('Persistence failed');
  console.log('Sample registration and reload persistence: passed');
  for(const path of ['references.json','manifest.webmanifest']){const r=await page.request.get('http://127.0.0.1:8000/'+path);if(!r.ok())throw Error(path+' failed');await r.json();console.log(path+': HTTP 200 and valid JSON');}

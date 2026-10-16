@@ -11,7 +11,7 @@ const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),
  try{
   browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});const page=await browser.newPage();
   if(contextRate)await page.addInitScript(rate=>{const Native=window.AudioContext;window.AudioContext=class extends Native{constructor(options={}){super({...options,sampleRate:rate})}}},contextRate);
-  await page.goto('http://127.0.0.1:'+server.address().port);await page.waitForFunction(()=>refs.size===13);await page.selectOption('#algorithm',mode);
+  await page.goto('http://127.0.0.1:'+server.address().port);await page.waitForFunction(()=>refs.size===names.length);await page.selectOption('#algorithm',mode);
   const labels=await page.evaluate(()=>names),rows=[];
   for(const recording of cases){
    if(!labels.includes(recording.name))throw Error('Unknown recording label');

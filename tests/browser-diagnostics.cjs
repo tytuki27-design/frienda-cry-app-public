@@ -1,5 +1,5 @@
 const assert=require('node:assert/strict');const {chromium}=require('playwright-core');
-(async()=>{const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});try{const page=await browser.newPage();await page.goto('http://127.0.0.1:8000');await page.waitForFunction(()=>refs.size===13);
+(async()=>{const browser=await chromium.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox']});try{const page=await browser.newPage();await page.goto('http://127.0.0.1:8000');await page.waitForFunction(()=>refs.size===names.length);
 const result=await page.evaluate(async()=>{
  const frame={f:Array(24).fill(1/Math.sqrt(24)),rms:.01};
  const legacy={name:names[0],frames:Array.from({length:30},()=>({...frame,f:[...frame.f]}))};
